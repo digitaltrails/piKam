@@ -1,7 +1,7 @@
 Prerequisites
 
   On RaspberryPi - assuming Raspbian
-     Install the python-twisted package (used for client server networking)
+     Install the python-twisted package (used for client/server networking).
      Kivy is not yet available for Raspbian, so you will have to use a 
      remote Kivy client...
 
@@ -9,36 +9,47 @@ Prerequisites
 
      On GUI client Linux machine:
      Install Kivy - most distributions seem to have a kivy package available. 
-     On OpenSUSE this seemed to install everything needed including Twisted
+     On OpenSUSE this seemed to install everything needed including Twisted.
 
      On client Android machine:
-     Install the Kivy Launcher app from the Play Store.
+     Install the "Kivy Launcher" app from the Play Store.
 
-Installation
+Installation/Test
 
-1) Copy piKamServer.py to your RaspberryPi
+1)  Copy piKamServer.py to your RaspberryPi
+    Start the server, at the shell prompt:  
 
-2a) Linux client: copy everthing to a folder on the client.
+         python piKamServer.py
 
-2b) Android client: find where kivy put it's apps folder - e.g. /sdcard0/kivy/,
-    create a folder /sdcard0/kivy/pikam 
-    copy everything into this folder (skip piKamServer if you wish)
+2a) Linux client: 
+    Create a folder called piKam (or anything you prefer).
+    Copy all the piKam files to this folder. 
+    In a shell, cd to the piKam folder and enter: 
+
+         python piKam.py
+
+    A GUI should fire up.
+    Press F1 to bring up the piKam settings dialog. 
+    Set the address of you RaspberryPi.
+    Close settings.
+    See if you can connect and "Capture" a photo.
+    
+2b) Android client: 
+    Find where "Kivy Launcher" put it's apps folder.
+    Lets say you find that Kivy Launcher is using /sdcard0/kivy/
+    Create a sub-folder /sdcard0/kivy/pikam 
+    Copy all the piKam files into this folder (skip piKamServer if you wish).
+    Start the Kivy Launcher, it should list a piKam app, tap on it.
+    A GUI should fire up.
+    Tap the standard Android settings button/icon to bring up the piKam settings dialog. 
+    Set the address of you RaspberryPi.
+    Close settings.
+    See if you can connect and take a photo.
 
 3b) Other clients - probably similar to Linux
 
-Test
-
-1) On you RaspberryPi start the server, at the shell prompt:  python piKamServer.py
-
-2a) On Linux, in a shell, cd to the pikam folder and enter: python piKam.py
-    A gui should fire up - press F1 and set the address of you RaspberryPi
-    See if you can connect and take a photo.
-
-2b) On Android, start the Kivy Launcher and pick piKam.
-    A gui should fire up - press the settings key and set the address of you RaspberryPi
-    See if you can connect and take a photo.
 
 Controls:
     Mostly obvious.
     Swipe left right on the image to goto prev/next.    
-   
+    Photos are written to the client install folder.
