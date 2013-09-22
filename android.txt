@@ -1,0 +1,3 @@
+title=piKam
+author=Michael Hamilton
+orientation=portrate

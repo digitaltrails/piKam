@@ -1,0 +1,153 @@
+#
+# PiKamApp PiKam.kv 
+#
+# Copyright (C) 2013: Michael Hamilton
+# The code is GPL 3.0(GNU General Public License) ( http://www.gnu.org/copyleft/gpl.html )
+#
+
+[SliderLabel@Label]:
+    size_hint: 1,.15
+    text: ctx.text if hasattr(ctx, 'text') else ''
+
+<PiKamWidget>:
+    imageCarousel: carousel
+    downloadProgress: downloadProgress
+    BoxLayout:
+        width:root.width
+        height:root.height
+        orientation:'vertical'
+        
+        Carousel:
+            id: carousel
+            size_hint: 1, .4
+        ProgressBar
+            id: downloadProgress
+            size_hint: 1, .05
+            max: 12000000
+
+        GridLayout:
+            size_hint: 1, .07
+            cols: 4
+
+            Label:
+                text: "AWB"
+            Spinner:
+                text: app.model.awb
+                values: app.model.awbOptions   
+                on_text: app.model.awb = self.text                
+            Label:
+                text: "Scene"           
+            Spinner:
+                text: app.model.scene
+                values: app.model.sceneOptions
+                on_text: app.model.scene = self.text              
+            Label:
+                text: "Metering"
+            Spinner:
+                text: app.model.metering
+                values: app.model.meteringOptions   
+                on_text: app.model.metering = self.text
+            Label:
+                text: "Imx Fx"           
+            Spinner:
+                text: app.model.imxfx
+                values: app.model.imfxOptions
+                on_text: app.model.imxfx = self.text              
+
+        GridLayout:
+            cols: 6
+            size_hint: 1, .3
+            padding: [0,20]
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "Exp"
+                SliderLabel:
+                    id: evSelected
+                    text: str(app.model.ev) + " ev"
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.ev
+                    min: -10
+                    max: 10
+                    on_value: app.model.ev = int(self.value + 0.5); evSelected.text = str(app.model.ev) + " ev"
+            
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "Zoom"
+                SliderLabel:
+                    id: zoomSelected
+                    text: "x " + str(app.model.zoomTimes)
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.zoomTimes
+                    min: 1
+                    max: 10 
+                    on_value: app.model.zoomTimes = int(self.value); zoomSelected.text = "x " + str(app.model.zoomTimes)
+ 
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "ISO"
+                SliderLabel:
+                    id: isoSelected
+                    text: app.model.iso
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.isoOptions.index(app.model.iso)
+                    min: 0
+                    max: len(app.model.isoOptions) - 1  
+                    on_value: app.model.iso = app.model.isoOptions[int(self.value + 0.5)] ; isoSelected.text = app.model.iso
+
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "Br"
+                SliderLabel:
+                    id: brightnessSelected
+                    text: str(app.model.brightness) + "%"
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.brightness
+                    min: 0
+                    max: 100
+                    on_value: app.model.brightness = int(self.value + 0.5); brightnessSelected.text = str(app.model.brightness) + "%"
+
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "Cont"
+                SliderLabel:
+                    id: contrastSelected
+                    text: str(app.model.contrast) + "%"
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.contrast
+                    min: -100
+                    max: 100
+                    on_value: app.model.contrast = int(self.value + 0.5); contrastSelected.text = str(app.model.contrast) + "%"
+
+            BoxLayout:
+                orientation: "vertical"
+                SliderLabel:
+                    text: "Sat"
+                SliderLabel:
+                    id: saturationSelected
+                    text: str(app.model.saturation) + "%"
+                Slider:
+                    orientation: "vertical"
+                    value: app.model.saturation
+                    min: -100
+                    max: 100
+                    on_value: app.model.saturation = int(self.value + 0.5); saturationSelected.text = str(app.model.saturation) + "%"
+
+        GridLayout:
+            size_hint: 1, .07
+            cols: 2
+            Button:
+                text: 'Capture'
+                on_press: app.takeSnapshot()
+            Button:
+                text: 'Reconnect'
+                on_press: app.reconnect()
