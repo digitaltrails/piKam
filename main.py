@@ -109,7 +109,8 @@ class PiKamModel():
             '--contrast': self.contrast, 
             '--saturation': self.saturation, 
             '--awb': self.awb,
-            '--metering': self.metering
+            '--metering': self.metering,
+            '-t':0,
             }
         if self.zoomTimes > 1.0:
             roi = ",".join([str(v*(1.0/self.zoomTimes)) for v in (1.0,1.0,1.0,1.0)])
