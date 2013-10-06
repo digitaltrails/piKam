@@ -10,16 +10,19 @@
     text: ctx.text if hasattr(ctx, 'text') else ''
 
 <PiKamWidget>:
+    imageLayout: imageLayout
     imageCarousel: carousel
     downloadProgress: downloadProgress
     BoxLayout:
         width:root.width
         height:root.height
         orientation:'vertical'
-        
-        Carousel:
-            id: carousel
+        GridLayout:
+            id: imageLayout
             size_hint: 1, .4
+            cols: 1
+            Carousel:
+                id: carousel
         ProgressBar
             id: downloadProgress
             size_hint: 1, .05
