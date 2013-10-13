@@ -13,15 +13,14 @@ from twisted.protocols import basic
 
 from kivy.app import App
 from kivy.app import Widget
+from kivy.clock import Clock
 from kivy.uix.image import Image
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
-import time
 import cPickle
-from threading import Thread
 
 SCENE_OPTIONS = "off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks".split(',')
 AWB_OPTIONS = "off,auto,sun,cloud,shade,tungsten,fluorescent,incandescent,flash,horizon".split(',')
@@ -227,19 +226,21 @@ class PiKamApp(App):
     def displayProgress(self, value):
         self.root.downloadProgress.value += value
         
-    def displayBusyWaiting(self, inThread=False):
-        #self.root.downloadProgress.value += 20000
-        #return
-        if not inThread:
-            Thread(target=self.displayBusyWaiting,args=(True,)).start()
+    def displayBusyWaiting(self, dt=None):
+        if dt == None:
+            print "schedule"
+            self.lastProgressValue = 0
+            Clock.schedule_interval(self.displayBusyWaiting, 1 / 10.)
             return
         # Fake progress updates until the real updates happen
-        self.root.downloadProgress.value = 0
-        lastValue = self.root.downloadProgress.value
-        while lastValue == self.root.downloadProgress.value:
-            lastValue += 20000
+        
+        if self.lastProgressValue == self.root.downloadProgress.value:
+            self.lastProgressValue += 20000
             self.root.downloadProgress.value += 20000
-            time.sleep(.1)
+            return True
+        else:
+            print "stop"
+            return False
          
     def displayImage(self, image):
         if self.config.get('Misc', 'carousel') != '0':
@@ -280,9 +281,17 @@ class PiKamApp(App):
                 jpegFile.write(result['data'])
             image = Image(source=jpegFilename, size=(1400, 1400))
             #Seems images won't load in this event driven method on some droids - threading issue?
+            # Simple test 
             #splash = Image(source='piKamSplash.jpg')
-            #self.displayImage(splash)   
+            #self.displayImage(splash)
+            # Try delaying the load - doesn't help.
+            #Clock.schedule_once(lambda dt: self.displayImage(image), -1)
+            # 
+            # Raising a dialog will cause the same problem to happen in OpenSUSE
+            # - some kind of event clash in Twisted thread handling perhaps?
+            #self.displayInfo('test')
             self.displayImage(image)
+
         elif result['type'] == 'error':
             self.displayError(result['message'])
         else:
