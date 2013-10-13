@@ -83,7 +83,14 @@ SETTINGS_JSON_DATA = """[
       "title":   "Image Carousel",
       "desc":    "Display images in a swipe left/right carousel.",
       "section": "Misc",
-      "key":     "carousel" }
+      "key":     "carousel" },
+      
+    {
+      "type":    "bool",
+      "title":   "Spash Image",
+      "desc":    "Display a splash image on startup.",
+      "section": "Misc",
+      "key":     "splash" }
 ]
 """ % str(ENCODING_OPTIONS).replace("'", '"')
 
@@ -185,13 +192,15 @@ class PiKamApp(App):
    
     def build(self):
         self.root = PiKamWidget()
+        if self.config.get('Misc', 'splash') != '0':
+            self.displayImage(Image(source='piKamSplash.jpg'))
         self.reconnect()
         return self.root
     
     def build_config(self, config):
         config.setdefaults('Server', {'hostname': 'localhost', 'port': '8000'}) 
         config.setdefaults('Camera', {'encoding': 'jpg', 'quality': 0, 'sharpness': 0, 'hflip': 0, 'vflip': 0})
-        config.setdefaults('Misc',   {'carousel': 0})
+        config.setdefaults('Misc',   {'carousel': 1, 'splash': 1})
         
     def build_settings(self, settings):
         # Javascript Object Notation
@@ -232,6 +241,15 @@ class PiKamApp(App):
             self.root.downloadProgress.value += 20000
             time.sleep(.1)
          
+    def displayImage(self, image):
+        if self.config.get('Misc', 'carousel') != '0':
+            self.root.imageCarousel.add_widget(image)
+            # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
+            self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+        else:
+            self.root.imageLayout.clear_widgets()
+            self.root.imageLayout.add_widget(image)
+            
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
         self.chdkConnection = connection  
@@ -239,6 +257,10 @@ class PiKamApp(App):
  
     def on_pause(self):
         reactor._mainLoopShutdown()
+        return True
+
+    def on_resume(self):
+        self.reconnect()
         return True
    
     def sendRemoteCommand(self, message):
@@ -257,13 +279,10 @@ class PiKamApp(App):
             with open(jpegFilename, 'wb') as jpegFile:
                 jpegFile.write(result['data'])
             image = Image(source=jpegFilename, size=(1400, 1400))
-            if self.config.get('Misc', 'carousel'):
-                self.root.imageCarousel.add_widget(image)
-                # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
-                self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
-            else:
-                self.root.imageLayout.clear_widgets()
-                self.root.imageLayout.add_widget(image)
+            #Seems images won't load in this event driven method on some droids - threading issue?
+            #splash = Image(source='piKamSplash.jpg')
+            #self.displayImage(splash)   
+            self.displayImage(image)
         elif result['type'] == 'error':
             self.displayError(result['message'])
         else:
