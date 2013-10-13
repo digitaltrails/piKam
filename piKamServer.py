@@ -14,6 +14,10 @@ import cPickle as Pickler
 import re
 from datetime import datetime
 
+# Enable a test image if not running on RaspberryPi or the Pi lacks a camera
+TEST_IMAGE = None
+#TEST_IMAGE = 'piKamSplash.jpg'
+
 class PiKamServerProtocal(basic.NetstringReceiver):
     """Uses Netstring format, for example '20:this message 20 long,'"""
     
@@ -37,18 +41,19 @@ class PiKamServerProtocal(basic.NetstringReceiver):
             self.transport.write(str(len(msg)) + ':' + msg + ',')             
             
     def shoot(self, cmd):
+
         imageType = cmd['args']['--encoding'] if cmd['args']['--encoding'] else 'jpg'
         imageFilename = 'IMG-' + datetime.now().isoformat().replace(':','_') + '.' + imageType
         args = sum([[k] if v == None else [k,str(v)] for k,v in cmd['args'].iteritems()], [])
-        raspistillCmd = ['raspistill', '-o', imageFilename, '-n'] + args
-        
-        output, err, rc = self.osCommand(raspistillCmd)
+        raspistillCmd = ['raspistill', '-o', imageFilename, '-n'] + args 
+        output, err, rc = self.osCommand(raspistillCmd if not TEST_IMAGE else [ 'sleep', '2' ])            
         print output
         print err
+
         if rc == 0:
             jpegBinary = None
             print imageFilename
-            with open(imageFilename, 'rb') as jpegFile:
+            with open(imageFilename if not TEST_IMAGE else TEST_IMAGE, 'rb') as jpegFile:
                 jpegBinary = jpegFile.read()
             if jpegBinary:
                 data = {'type':'jpeg', 'name':imageFilename, 'data':jpegBinary}

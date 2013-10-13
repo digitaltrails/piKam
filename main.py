@@ -93,7 +93,7 @@ SETTINGS_JSON_DATA = """[
 ]
 """ % str(ENCODING_OPTIONS).replace("'", '"')
 
-print SETTINGS_JSON_DATA
+#print SETTINGS_JSON_DATA
 
 class PiKamModel():
  
@@ -229,7 +229,8 @@ class PiKamApp(App):
     def displayBusyWaiting(self, dt=None):
         if dt == None:
             print "schedule"
-            self.lastProgressValue = 0
+            self.lastProgressValue = -1
+            self.root.downloadProgress.value = -1
             Clock.schedule_interval(self.displayBusyWaiting, 1 / 10.)
             return
         # Fake progress updates until the real updates happen
@@ -287,9 +288,6 @@ class PiKamApp(App):
             # Try delaying the load - doesn't help.
             #Clock.schedule_once(lambda dt: self.displayImage(image), -1)
             # 
-            # Raising a dialog will cause the same problem to happen in OpenSUSE
-            # - some kind of event clash in Twisted thread handling perhaps?
-            #self.displayInfo('test')
             self.displayImage(image)
 
         elif result['type'] == 'error':
