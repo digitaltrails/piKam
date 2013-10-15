@@ -247,6 +247,7 @@ class PiKamApp(App):
          
     def displayImage(self, filename):
         useCarousel = self.config.get('Misc', 'carousel') != '0'
+        # On some droids kivy cannot load large images - so downsize for display
         pyImg = PyImage.open(filename)
         pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
         previewFilename = filename + '.thumb.jpg'
