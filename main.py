@@ -20,7 +20,9 @@ from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 
+import Image as PyImage
 import cPickle
+import os
 
 SCENE_OPTIONS = "off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks".split(',')
 AWB_OPTIONS = "off,auto,sun,cloud,shade,tungsten,fluorescent,incandescent,flash,horizon".split(',')
@@ -191,8 +193,8 @@ class PiKamApp(App):
    
     def build(self):
         self.root = PiKamWidget()
-        if self.config.get('Misc', 'splash') != '0':
-            self.displayImage(Image(source='piKamSplash.jpg'))
+        if self.config.get('Misc', 'splash') != '0' and os.path.exists('piKamSplash.jpg'):
+            self.displayImage('piKamSplash.jpg')
         self.reconnect()
         return self.root
     
@@ -229,29 +231,35 @@ class PiKamApp(App):
     def displayBusyWaiting(self, dt=None):
         if dt == None:
             print "schedule"
-            self.lastProgressValue = -1
-            self.root.downloadProgress.value = -1
-            Clock.schedule_interval(self.displayBusyWaiting, 1 / 10.)
+            self.lastProgressValue = 0
+            self.root.downloadProgress.value = 0
+            Clock.schedule_interval(self.displayBusyWaiting, 1 / 50.)
             return
         # Fake progress updates until the real updates happen
         
         if self.lastProgressValue == self.root.downloadProgress.value:
-            self.lastProgressValue += 20000
-            self.root.downloadProgress.value += 20000
+            self.lastProgressValue += 10000
+            self.root.downloadProgress.value += 10000
             return True
         else:
             print "stop"
             return False
          
-    def displayImage(self, image):
-        if self.config.get('Misc', 'carousel') != '0':
+    def displayImage(self, filename):
+        useCarousel = self.config.get('Misc', 'carousel') != '0'
+        pyImg = PyImage.open(filename)
+        pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
+        previewFilename = filename + '.thumb.jpg'
+        pyImg.save(previewFilename)
+        image = Image(source=previewFilename)
+        if useCarousel:
             self.root.imageCarousel.add_widget(image)
             # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
             self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
         else:
             self.root.imageLayout.clear_widgets()
             self.root.imageLayout.add_widget(image)
-            
+
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
         self.chdkConnection = connection  
@@ -277,18 +285,10 @@ class PiKamApp(App):
         result = cPickle.loads(message)
         if result['type'] == 'jpeg':
             # Save the image and add an internal copy to the GUI carousel.
-            jpegFilename = result['name']
-            with open(jpegFilename, 'wb') as jpegFile:
-                jpegFile.write(result['data'])
-            image = Image(source=jpegFilename, size=(1400, 1400))
-            #Seems images won't load in this event driven method on some droids - threading issue?
-            # Simple test 
-            #splash = Image(source='piKamSplash.jpg')
-            #self.displayImage(splash)
-            # Try delaying the load - doesn't help.
-            #Clock.schedule_once(lambda dt: self.displayImage(image), -1)
-            # 
-            self.displayImage(image)
+            filename = result['name']
+            with open(filename, 'wb') as imageFile:
+                imageFile.write(result['data'])
+            self.displayImage(filename)
 
         elif result['type'] == 'error':
             self.displayError(result['message'])
