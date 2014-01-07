@@ -13,13 +13,33 @@ Prerequisites
 
      On client Android machine:
      Install the "Kivy Launcher" app from the Play Store.
+     
+  Optional picam module for direct python camera access:
+     The server normally uses the raspistill command to drive the 
+     camera.  I've included an alternate server that directly accesses
+     the camera via Sean Ashton's picam module.  If you wish to use 
+     the picam module then follow Sean's installation instructions at 
+  
+       https://github.com/ashtons/picam/blob/master/README.md
+
+     Plus picam requires the python image library, which can be
+     installed by running the following command:
+  
+       sudo apt-get install python-imaging-tk
 
 Installation/Test
 
-1)  Copy piKamServer.py to your RaspberryPi
+1)  Copy piKamServer.py to your Raspberry Pi
     Start the server, at the shell prompt:  
 
          python piKamServer.py
+         
+    
+    OR - if you wish to use the picam python module for direct
+    camera access, then also copy piKamPicamServer.py
+    to your Raspberry Pi and run that instead:
+     
+         python piKamPicamServer.py
 
 2a) Linux client: 
     Create a folder called piKam (or anything you prefer).
