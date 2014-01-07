@@ -23,14 +23,11 @@ from kivy.uix.button import Button
 import Image as PyImage
 import cPickle
 import os
+import inspect
 
-SCENE_OPTIONS = "off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks".split(',')
-AWB_OPTIONS = "off,auto,sun,cloud,shade,tungsten,fluorescent,incandescent,flash,horizon".split(',')
-METERING_OPTIONS = "average,spot,backlit,matrix".split(',')
-IMXFX_OPTIONS = "none,negative,solarise,sketch,denoise,emboss,oilpaint,hatch,gpen,pastel,watercolour,film,blur,saturation,colourswap,washedout,posterise,colourpoint,colourbalance,cartoon".split(',')
-COLFX_OPTIONS = "none,U,V".split(',')
-ISO_OPTIONS = "auto,50,100,200,400,800".split(",")
-ENCODING_OPTIONS = "jpg,bmp,gif,png".split(",")
+from piKamServer import PiKamRequest
+from piKamServer import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
+
 
 SETTINGS_JSON_DATA = """[
     { "type":    "title",
@@ -97,62 +94,34 @@ SETTINGS_JSON_DATA = """[
 
 #print SETTINGS_JSON_DATA
 
-class PiKamModel():
- 
+class PiKamModel(PiKamRequest):
     isoOptions = ISO_OPTIONS
     awbOptions = AWB_OPTIONS
     sceneOptions = SCENE_OPTIONS
     meteringOptions = METERING_OPTIONS
     imfxOptions = IMXFX_OPTIONS
     colfxOptions = COLFX_OPTIONS
-    
-    zoomTimes = 1
-    ev = 0
-    brightness = 50
-    contrast = 0
-    saturation = 0
-
-    iso = 'auto'
-    awb = 'auto'
-    metering = 'average'
-    scene = 'off'
-    imxfx = 'none'
-    colfx = 'none'
-    
-    def toMap(self, config):
-        map = { 
-            '--ISO': self.iso, 
-            '--ev': self.ev, 
-            '--brightness': self.brightness, 
-            '--contrast': self.contrast, 
-            '--saturation': self.saturation, 
-            '--awb': self.awb,
-            '--metering': self.metering,
-            '-t':0,
-            }
-        if self.zoomTimes > 1.0:
-            roi = ",".join([str(v*(1.0/self.zoomTimes)) for v in (1.0,1.0,1.0,1.0)])
-            map["--roi"] = roi
-        if self.imxfx != 'none':
-            map['--imxfx'] = self.imxfx
-        if self.colfx != 'none':
-            map['--colfx'] = self.colfx
-        if self.scene != 'off':
-            map['--exposure'] = self.scene
+      
+    def setConfig(self, config):
         if config.get('Camera', 'encoding'):
-            map['--encoding'] = config.get('Camera', 'encoding')
+            self.encoding = config.get('Camera', 'encoding')
         if config.get('Camera', 'sharpness') != '0':
-            map['--sharpness'] = config.get('Camera', 'sharpness')
+            self.sharpness = config.get('Camera', 'sharpness')
         if config.get('Camera', 'quality') != '0':
-            map['--quality'] = config.get('Camera', 'quality')
+            self.quality = config.get('Camera', 'quality')
         if config.get('Camera', 'hflip') != '0':
-            map['--hflip'] = None
+            self.hflip = None
         if config.get('Camera', 'vflip') != '0':
-            map['--vflip'] = None
-           
-        return map
-
-
+            self.vflip = None
+            
+    def toRequest(self):
+        request = PiKamRequest()
+        for n, v in inspect.getmembers(self):
+            if hasattr(request, n):
+                print 'xxxx', n, v
+                setattr(request, n, v)
+        return request
+        
 class PiKamWidget(Widget):
     pass
 
@@ -231,35 +200,42 @@ class PiKamApp(App):
     def displayBusyWaiting(self, dt=None):
         if dt == None:
             print "schedule"
-            self.lastProgressValue = 0
-            self.root.downloadProgress.value = 0
-            Clock.schedule_interval(self.displayBusyWaiting, 1 / 50.)
+            self.busyWaiting = True
+            Clock.schedule_interval(self.displayBusyWaiting, 1 / 10.)
             return
         # Fake progress updates until the real updates happen
         
-        if self.lastProgressValue == self.root.downloadProgress.value:
-            self.lastProgressValue += 10000
+        if self.busyWaiting:
             self.root.downloadProgress.value += 10000
             return True
         else:
+            # If the values differ, then 
             print "stop"
             return False
+    
+    def stopBusyWaiting(self):
+        self.busyWaiting = False
+    
          
     def displayImage(self, filename):
-        useCarousel = self.config.get('Misc', 'carousel') != '0'
-        # On some droids kivy cannot load large images - so downsize for display
-        pyImg = PyImage.open(filename)
-        pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
-        previewFilename = filename + '.thumb.jpg'
-        pyImg.save(previewFilename)
-        image = Image(source=previewFilename)
-        if useCarousel:
-            self.root.imageCarousel.add_widget(image)
-            # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
-            self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
-        else:
-            self.root.imageLayout.clear_widgets()
-            self.root.imageLayout.add_widget(image)
+        self.displayBusyWaiting()
+        try:
+            useCarousel = self.config.get('Misc', 'carousel') != '0'
+            # On some droids kivy cannot load large images - so downsize for display
+            pyImg = PyImage.open(filename)
+            pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
+            previewFilename = filename + '.thumb.jpg'
+            pyImg.save(previewFilename)
+            image = Image(source=previewFilename)
+            if useCarousel:
+                self.root.imageCarousel.add_widget(image)
+                # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
+                self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+            else:
+                self.root.imageLayout.clear_widgets()
+                self.root.imageLayout.add_widget(image)
+        finally:
+            self.stopBusyWaiting()
 
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
@@ -267,7 +243,7 @@ class PiKamApp(App):
         self.prepareCamera()
  
     def on_pause(self):
-        reactor._mainLoopShutdown()
+        #reactor._mainLoopShutdown()
         return True
 
     def on_resume(self):
@@ -282,9 +258,10 @@ class PiKamApp(App):
             self.displayError('No connection to server')
             
     def processRemoteResponse(self, message):
+        self.stopBusyWaiting()
         # Turn the response string back nto a dictionary and see what it is
         result = cPickle.loads(message)
-        if result['type'] == 'jpeg':
+        if result['type'] == 'image':
             # Save the image and add an internal copy to the GUI carousel.
             filename = result['name']
             with open(filename, 'wb') as imageFile:
@@ -298,10 +275,12 @@ class PiKamApp(App):
         self.root.downloadProgress.value = 0
 
     def takeSnapshot(self):
+        self.model.setConfig(self.config)
         command = {}
         command['cmd'] = 'shoot'
-        command['args'] = self.model.toMap(self.config)
-        # Turn the dictionary into a string so it can be sent in Netstring format
+        args = self.model.toRequest()
+        command['args'] = args
+        # Turn the request into a string so it can be sent in Netstring format
         self.sendRemoteCommand(cPickle.dumps(command))
         self.displayBusyWaiting()
         
