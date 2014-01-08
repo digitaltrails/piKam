@@ -39,11 +39,15 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         picam.config.brightness = int(request.brightness)   if request.brightness else 0           #  0 to 100
         picam.config.saturation = int(request.saturation)  if request.saturation else 0             #  -100 to 100
         #picam.config.videoStabilisation = 0      # 0 or 1 (false or true)
-        picam.config.exposureCompensation  = int(request.ev)  if request.ev else 0  # -10 to +10 ?
+        # EV seems to be mis-stated - adjust
+        picam.config.exposureCompensation  = int(request.ev * 6)  if request.ev else 0  # -10 to +10 ?
         #picam.config.rotation = 90               # 0-359
         picam.config.hflip = int(request.hflip)  if request.hflip else 0                  # 0 or 1
         picam.config.vflip = int(request.vflip) if request.vflip else 0                   # 0 or 1
         #picam.config.shutterSpeed = 20000         # 0 = auto, otherwise the shutter speed in ms
+        
+        #if request.zoomTimes > 1.0:
+        #    picam.config.roi = [v*(1.0/request.zoomTimes) for v in (1.0,1.0,1.0,1.0)]      
         
         image = picam.takePhoto()
         buffer = StringIO.StringIO()

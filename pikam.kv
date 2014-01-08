@@ -71,9 +71,9 @@
                 Slider:
                     orientation: "vertical"
                     value: app.model.ev
-                    min: -10
-                    max: 10
-                    on_value: app.model.ev = int(self.value + 0.5); evSelected.text = str(app.model.ev) + " ev"
+                    min: -3
+                    max: 3
+                    on_value: app.model.ev = int(self.value); evSelected.text = str(app.model.ev) + " ev"
             
             BoxLayout:
                 orientation: "vertical"

@@ -71,11 +71,12 @@ class PiKamServerProtocal(basic.NetstringReceiver):
     def createShootCommand(self, request):
         imageType = request.encoding if request.encoding else 'jpg'
         imageFilename = 'IMG-' + datetime.now().isoformat().replace(':','_') + '.' + imageType
+         # EV seems to be mis-stated - adjust
         args = [ 
             'raspistill', '-n',
             '-o', imageFilename,
             '--ISO', str(request.iso), 
-            '--ev', str(request.ev), 
+            '--ev', str(request.ev * 6), 
             '--brightness', str(request.brightness), 
             '--contrast', str(request.contrast), 
             '--saturation', str(request.saturation), 
