@@ -46,8 +46,10 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         picam.config.vflip = int(request.vflip) if request.vflip else 0                   # 0 or 1
         #picam.config.shutterSpeed = 20000         # 0 = auto, otherwise the shutter speed in ms
         
-        #if request.zoomTimes > 1.0:
-        #    picam.config.roi = [v*(1.0/request.zoomTimes) for v in (1.0,1.0,1.0,1.0)]      
+        if request.zoomTimes > 1.0:
+            sz = 1.0/request.zoomTimes
+            picam.config.roi = [ .5 - sz/2.0, .5 - sz/2.0, sz, sz ] 
+            print picam.config.roi
         
         image = picam.takePhoto()
         buffer = StringIO.StringIO()

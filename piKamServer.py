@@ -82,11 +82,12 @@ class PiKamServerProtocal(basic.NetstringReceiver):
             '--saturation', str(request.saturation), 
             '--awb', request.awb,
             '--metering', request.metering,
-            '-t', '1',
+            #'-t', '1',
             ]
         if request.zoomTimes > 1.0:
-            roi = ",".join([str(v*(1.0/request.zoomTimes)) for v in (1.0,1.0,1.0,1.0)])
-            args += ("--roi", roi)
+            sz = 1.0/request.zoomTimes
+            roi = [ .5 - sz/2.0, .5 - sz/2.0, sz, sz ] 
+            args += ('--roi', ','.join([str(v) for v in roi]))
         if request.imxfx != 'none':
             args += ('--imxfx', request.imxfx)
         if request.colfx != 'none':
