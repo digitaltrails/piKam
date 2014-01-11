@@ -118,7 +118,6 @@ class PiKamModel(PiKamRequest):
         request = PiKamRequest()
         for n, v in inspect.getmembers(self):
             if hasattr(request, n):
-                print 'xxxx', n, v
                 setattr(request, n, v)
         return request
         
@@ -159,7 +158,7 @@ class PiKamApp(App):
     model = PiKamModel()
     ndFilter = False
     exposureComp = 0 # TODO
-    liveViewImage = None
+    previewImage = None
     waitingForImage = False
    
     def build(self):
@@ -201,7 +200,7 @@ class PiKamApp(App):
         
     def displayBusyWaiting(self, dt=None):
         if dt == None:
-            print "schedule"
+            #print "schedule"
             self.busyWaiting = True
             Clock.schedule_interval(self.displayBusyWaiting, 1 / 10.)
             return
@@ -212,7 +211,7 @@ class PiKamApp(App):
             return True
         else:
             # If the values differ, then 
-            print "stop"
+            #print "stop"
             return False
     
     def stopBusyWaiting(self):
@@ -239,53 +238,59 @@ class PiKamApp(App):
         finally:
             self.stopBusyWaiting()
 
-    def displayLiveView(self, filename):
-        print 'lv'
-        oldImage = None
+    def displayPreview(self, filename):
         useCarousel = self.config.get('Misc', 'carousel') != '0'
-        if self.liveViewImage:
-            oldImage = self.liveViewImage
-            self.liveViewImage.nocache = True
-        self.liveViewImage = Image(source=filename)
-        if useCarousel:
-            oldIndex = self.root.imageCarousel.index
-            if oldImage:
-                self.root.imageCarousel.remove_widget(oldImage)
-            self.root.imageCarousel.add_widget(self.liveViewImage)
-            # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
-            if oldIndex == len(self.root.imageCarousel.slides) - 1:
-                self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+        if self.previewImage:
+            self.previewImage.reload()
+            if useCarousel:
+                # Shuffle to end
+                oldIndex = self.root.imageCarousel.index
+                self.root.imageCarousel.remove_widget(self.previewImage)
+                self.root.imageCarousel.add_widget(self.previewImage)
+                if oldIndex == len(self.root.imageCarousel.slides) - 1:
+                    self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
         else:
-            self.root.imageLayout.clear_widgets()
-            self.root.imageLayout.add_widget(self.liveViewImage)
+            self.previewImage = Image(source=filename)
+            self.previewImage.nocache = True
+            if useCarousel:
+                oldIndex = self.root.imageCarousel.index
+                self.root.imageCarousel.add_widget(self.previewImage)
+                # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
+                if oldIndex == len(self.root.imageCarousel.slides) - 1:
+                    self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+            else:
+                self.root.imageLayout.clear_widgets()
+                self.root.imageLayout.add_widget(self.previewImage)
 
-    def requestLiveView(self):
-        print 'lv'
+    def requestPreview(self):
+        #print 'lv'
         if self.waitingForImage:
             print 'already waiting'
             return
-        self.waitingForImage = True
+        if self.root.imageCarousel.index != len(self.root.imageCarousel.slides) - 1:
+            # Not looking at preview - don't refresh it
+            return
         self.takeSnapshot(preview=True)
 
-    def enableLiveView(self):
-        print 'enableLiveView'
+    def enablePreview(self):
+        print 'enablePreview'
         self.waitingForImage = False
-        self.liveViewTask = task.LoopingCall(self.requestLiveView)
-        self.liveViewTask.start(3) 
+        self.PreviewTask = task.LoopingCall(self.requestPreview)
+        self.PreviewTask.start(3) 
         
-    def disableLiveView(self):
-        if self.liveViewTask: 
-            self.liveViewTask.stop()
+    def disablePreview(self):
+        if self.PreviewTask: 
+            self.PreviewTask.stop()
 
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
         self.chdkConnection = connection  
         self.prepareCamera()
-        self.enableLiveView()
+        self.enablePreview()
  
     def on_pause(self):
         #reactor._mainLoopShutdown()
-        self.disableLiveView()
+        self.disablePreview()
         return True
 
     def on_resume(self):
@@ -312,11 +317,10 @@ class PiKamApp(App):
                 self.displayImage(filename)
             elif result['type'] == 'preview':
                 # Save the image and add an internal copy to the GUI carousel.
-                filename = result['name']
+                filename = 'preview.jpg'
                 with open(filename, 'wb') as imageFile:
                     imageFile.write(result['data'])
-                self.displayLiveView(filename)
-    
+                self.displayPreview(filename)  
             elif result['type'] == 'error':
                 self.displayError(result['message'])
             else:
@@ -331,7 +335,11 @@ class PiKamApp(App):
         command = {}
         command['cmd'] = 'shoot'
         args = self.model.toRequest()
-        args.preview = preview
+        if preview:
+            args.height = 480
+            args.width = 640
+            args.quality = 10
+            args.preview = True
         command['args'] = args
         # Turn the request into a string so it can be sent in Netstring format
         self.sendRemoteCommand(cPickle.dumps(command))
