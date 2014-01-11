@@ -6,7 +6,7 @@
 # Copyright (C) 2013: Michael Hamilton
 # The code is GPL 3.0(GNU General Public License) ( http://www.gnu.org/copyleft/gpl.html )
 #
-from twisted.internet import reactor, protocol
+from twisted.internet import reactor, protocol, defer
 
 import cPickle as Pickler
 from datetime import datetime
@@ -19,16 +19,65 @@ from piKamServer import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS
 
 
 class PiKamPicamServerProtocal(PiKamServerProtocal):
-            
+   
+    liveViewTask  = None    
+    shooting = False
+    
+    # Max message/jpg size.
+    MAX_LENGTH = 100000000
+        
+    def stringReceived(self, data):
+        """Process decoded Netstring message received from a client."""
+        # Turn the received string back into a dictionary.
+        #print data
+        cmd = Pickler.loads(data)
+        # Retreive the command from the dictionary
+        if cmd['cmd'] == 'shoot':
+            self.shoot(cmd)
+        elif cmd['cmd'] == 'prepareCamera':
+            self.prepareCamera(cmd)
+        else:
+            print 'bad message', cmd['cmd']
+            msg = 'Invalid Command:' + cmd['cmd']
+            self.transport.write(str(len(msg)) + ':' + msg + ',')             
+
+    def connectionLost(self, reason):
+        print "Client Connection Lost!"
+        
+    def prepareCamera(self, cmd):
+        """Put the camera in to recording mode."""
+        #self.osCommand(['/home/pi/chdkptp.sh', '-econnect', '-erec'])
+        pass
+
     def shoot(self, cmd):
-        request = cmd['args']
-        print vars(request)
-
-        imageType = request.encoding if request.encoding else 'jpg'
-        imageFilename = 'IMG-' + datetime.now().isoformat().replace(':','_') + '.' + imageType
-        print imageType, imageFilename
-
-        picam.config.imageFX = IMXFX_OPTIONS.index(request.imxfx)
+        while self.shooting:
+            print 'sleeping'
+            self._sleep(1)
+        try:
+            self.shooting = True
+            request = cmd['args']
+            print vars(request)
+    
+            if request.preview:
+                imageType = 'JPEG'
+                imageFilename = 'preview.jpg'
+                returnType = 'preview'                
+            else:
+                imageType = request.encoding if request.encoding and request.encoding != 'jpg' else 'JPEG'
+                imageFilename = 'IMG-' + datetime.now().isoformat().replace(':','_') + '.' + imageType
+                returnType = 'image'
+            print imageType, imageFilename
+            self._capture(imageType, imageFilename, request, returnType)
+        finally:
+            self.shooting = False
+ 
+    def _sleep(secs):
+        d = defer.Deferred()
+        reactor.callLater(secs, d.callback, None)
+        return d 
+                 
+    def _capture(self, imageType, imageFilename, request, returnType):  
+        picam.config.imageFX = IMXFX_OPTIONS.index(request.imxfx) if request.imxfx else 0
         picam.config.exposure = SCENE_OPTIONS.index(request.scene) if request.scene else 0
         picam.config.meterMode = METERING_OPTIONS.index(request.metering)
         picam.config.awbMode = AWB_OPTIONS.index(request.awb)
@@ -45,21 +94,24 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         picam.config.hflip = int(request.hflip)  if request.hflip else 0                  # 0 or 1
         picam.config.vflip = int(request.vflip) if request.vflip else 0                   # 0 or 1
         #picam.config.shutterSpeed = 20000         # 0 = auto, otherwise the shutter speed in ms
+        picam.config.quantisationParameter = int(request.quality) if request.quality else 90
         
         if request.zoomTimes > 1.0:
             sz = 1.0/request.zoomTimes
             picam.config.roi = [ .5 - sz/2.0, .5 - sz/2.0, sz, sz ] 
             print picam.config.roi
         
-        image = picam.takePhoto()
+        image = picam.takePhoto() if returnType != 'preview' else picam.takePhotoWithDetails(640,480, 10) 
+        
         buffer = StringIO.StringIO()
-        image.save(buffer, "JPEG" if imageType == 'jpg' else imageType)
+        image.save(buffer, imageType)
         imageBinary = buffer.getvalue()
         buffer.close()
         print imageFilename, str(len(imageBinary))
         if imageBinary:
-            data = {'type':'image', 'name':imageFilename, 'data':imageBinary}
+            data = {'type':returnType, 'name':imageFilename, 'data':imageBinary}
         else:
+            print 'error'
             data = {'type':'error', 'message':'Problem reading captured file.'}
         # data = {'type':'error', 'message':'Problem during capture.'}
         # Turn the dictionary into a string so we can send it in Netstring format.
@@ -68,8 +120,6 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         # Return a Netstring message to the client - will include the jpeg if all went well
         self.transport.write(str(len(message)) + ':' + message + ',')
  
-    def prepareCamera(self, cmd):
-        pass
 
        
 def main():

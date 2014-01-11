@@ -47,6 +47,7 @@ class PiKamRequest():
     hflip = None
     vflip = None
     
+    preview = False
 
 class PiKamServerProtocal(basic.NetstringReceiver):
     """Uses Netstring format, for example '20:this message 20 long,'"""

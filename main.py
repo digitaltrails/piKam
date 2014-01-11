@@ -8,7 +8,7 @@
 #
 from kivy.support import install_twisted_reactor
 install_twisted_reactor()
-from twisted.internet import reactor, protocol
+from twisted.internet import reactor, protocol, task
 from twisted.protocols import basic
 
 from kivy.app import App
@@ -159,6 +159,8 @@ class PiKamApp(App):
     model = PiKamModel()
     ndFilter = False
     exposureComp = 0 # TODO
+    liveViewImage = None
+    waitingForImage = False
    
     def build(self):
         self.root = PiKamWidget()
@@ -237,13 +239,53 @@ class PiKamApp(App):
         finally:
             self.stopBusyWaiting()
 
+    def displayLiveView(self, filename):
+        print 'lv'
+        oldImage = None
+        useCarousel = self.config.get('Misc', 'carousel') != '0'
+        if self.liveViewImage:
+            oldImage = self.liveViewImage
+            self.liveViewImage.nocache = True
+        self.liveViewImage = Image(source=filename)
+        if useCarousel:
+            oldIndex = self.root.imageCarousel.index
+            if oldImage:
+                self.root.imageCarousel.remove_widget(oldImage)
+            self.root.imageCarousel.add_widget(self.liveViewImage)
+            # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
+            if oldIndex == len(self.root.imageCarousel.slides) - 1:
+                self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+        else:
+            self.root.imageLayout.clear_widgets()
+            self.root.imageLayout.add_widget(self.liveViewImage)
+
+    def requestLiveView(self):
+        print 'lv'
+        if self.waitingForImage:
+            print 'already waiting'
+            return
+        self.waitingForImage = True
+        self.takeSnapshot(preview=True)
+
+    def enableLiveView(self):
+        print 'enableLiveView'
+        self.waitingForImage = False
+        self.liveViewTask = task.LoopingCall(self.requestLiveView)
+        self.liveViewTask.start(3) 
+        
+    def disableLiveView(self):
+        if self.liveViewTask: 
+            self.liveViewTask.stop()
+
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
         self.chdkConnection = connection  
         self.prepareCamera()
+        self.enableLiveView()
  
     def on_pause(self):
         #reactor._mainLoopShutdown()
+        self.disableLiveView()
         return True
 
     def on_resume(self):
@@ -258,35 +300,48 @@ class PiKamApp(App):
             self.displayError('No connection to server')
             
     def processRemoteResponse(self, message):
-        self.stopBusyWaiting()
-        # Turn the response string back nto a dictionary and see what it is
-        result = cPickle.loads(message)
-        if result['type'] == 'image':
-            # Save the image and add an internal copy to the GUI carousel.
-            filename = result['name']
-            with open(filename, 'wb') as imageFile:
-                imageFile.write(result['data'])
-            self.displayImage(filename)
+        try:
+            self.stopBusyWaiting()
+            # Turn the response string back nto a dictionary and see what it is
+            result = cPickle.loads(message)
+            if result['type'] == 'image':
+                # Save the image and add an internal copy to the GUI carousel.
+                filename = result['name']
+                with open(filename, 'wb') as imageFile:
+                    imageFile.write(result['data'])
+                self.displayImage(filename)
+            elif result['type'] == 'preview':
+                # Save the image and add an internal copy to the GUI carousel.
+                filename = result['name']
+                with open(filename, 'wb') as imageFile:
+                    imageFile.write(result['data'])
+                self.displayLiveView(filename)
+    
+            elif result['type'] == 'error':
+                self.displayError(result['message'])
+            else:
+                self.displayError('Unexpected kind of message.')
+            self.root.downloadProgress.value = 0
+        finally:
+            self.waitingForImage = False
 
-        elif result['type'] == 'error':
-            self.displayError(result['message'])
-        else:
-            self.displayError('Unexpected kind of message.')
-        self.root.downloadProgress.value = 0
-
-    def takeSnapshot(self):
+    def takeSnapshot(self, preview = False):
+        self.waitingForImage = True
         self.model.setConfig(self.config)
         command = {}
         command['cmd'] = 'shoot'
         args = self.model.toRequest()
+        args.preview = preview
         command['args'] = args
         # Turn the request into a string so it can be sent in Netstring format
         self.sendRemoteCommand(cPickle.dumps(command))
         self.displayBusyWaiting()
         
     def prepareCamera(self):
-        #command = {'cmd': 'prepareCamera'}
-        #self.sendRemoteCommand(cPickle.dumps(command))
+        command = {'cmd': 'prepareCamera'}
+        args = self.model.toRequest()
+        command['args'] = args
+        self.sendRemoteCommand(cPickle.dumps(command))
         pass
         
     def reconnect(self):
