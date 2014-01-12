@@ -21,7 +21,7 @@ drive the camera on a Raspberry Pi.
 * Running multiple raspistills at the same time can cause the camera to lock up.
 * The picam-based server's zoom isn't fully working.
 * The live view is semi-live, it's slow, perhaps a zombie-view more than a live-view.
-* Kivy settings don't seem to value restrictions and I haven't yet coded any sanity checks of my own.
+* Kivy settings don't seem to support placing restrictions on values and I haven't yet coded any sanity checks of my own.
 * Switching to scene mode Auto seems to improve brightness/contrast.
 * -ev doesn't seem to do much.
 
