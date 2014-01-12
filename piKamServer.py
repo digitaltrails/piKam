@@ -50,13 +50,17 @@ class PiKamRequest():
     width = 0
     height = 0 
  
-    preview = False 
+    replyMessageType = "image" 
+    
  
 class PiKamServerProtocal(basic.NetstringReceiver):
     """Uses Netstring format, for example '20:this message 20 long,'"""
         
     # Max message/jpg size.
     MAX_LENGTH = 100000000
+    MAX_WIDTH = 2592
+    MAX_HEIGHT = 1944
+    DEFAULT_QUALITY = 85
         
     def stringReceived(self, data):
         """Process decoded Netstring message received from a client."""
@@ -105,15 +109,21 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         if request.sharpness:
             args += ('--sharpness', request.sharpness)
         if request.quality:
-            args += ('--quality', request.quality)
+            args += ('--quality', str(request.quality))
         if request.hflip:
             args += ('--hflip', request.hflip)
         if request.vflip:
             args += ('--vflip', request.vflip)  
-        return args, imageFilename, imageType
+        if request.width:
+            args += ('--width', str(request.width))
+        if request.height:
+            args += ('--height', str(request.height))
+        print args
+        replyMessageType = request.replyMessageType
+        return args, imageFilename, imageType, replyMessageType
 
     def shoot(self, cmd):
-        raspistillCmd, imageFilename, imageType = self.createShootCommand(cmd['args']) 
+        raspistillCmd, imageFilename, imageType, replyMessageType = self.createShootCommand(cmd['args']) 
         output, err, rc = self.osCommand(raspistillCmd if not TEST_IMAGE else [ 'sleep', '2' ])            
         print output
         print err
@@ -124,7 +134,7 @@ class PiKamServerProtocal(basic.NetstringReceiver):
             with open(imageFilename if not TEST_IMAGE else TEST_IMAGE, 'rb') as jpegFile:
                 imageBinary = jpegFile.read()
             if imageBinary:
-                data = {'type':'image', 'name':imageFilename, 'data':imageBinary}
+                data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
             else:
                 data = {'type':'error', 'message':'Problem reading captured file.'}
         else:

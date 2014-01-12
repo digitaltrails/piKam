@@ -19,11 +19,13 @@ from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.graphics.texture import Texture
 
 import Image as PyImage
 import cPickle
 import os
 import inspect
+import StringIO
 
 from piKamServer import PiKamRequest
 from piKamServer import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
@@ -83,6 +85,25 @@ SETTINGS_JSON_DATA = """[
       "section": "Misc",
       "key":     "carousel" },
       
+    { "type":    "numeric",
+      "title":   "Carousel Size",
+      "desc":    "Carousel maximum images (2..n)",
+      "section": "Misc",
+      "key":     "numSlides" },
+      
+    {
+      "type":    "bool",
+      "title":   "Live Preview",
+      "desc":    "Display semi-live preview.",
+      "section": "Misc",
+      "key":     "preview" },
+      
+    { "type":    "numeric",
+      "title":   "Live Preview Quality",
+      "desc":    "Jpeg Quality 0..100 Auto=0",
+      "section": "Misc",
+      "key":     "previewQuality" },   
+      
     {
       "type":    "bool",
       "title":   "Spash Image",
@@ -93,6 +114,18 @@ SETTINGS_JSON_DATA = """[
 """ % str(ENCODING_OPTIONS).replace("'", '"')
 
 #print SETTINGS_JSON_DATA
+
+def textureFromPyImage(pyImg):
+    # Extract a texture from a PIL Image - avoids kivy reloading it from file
+    raw = pyImg.tostring()
+    width, height = pyImg.size
+    texture = Texture.create(size=(width, height))
+    texture.blit_buffer(raw, colorfmt='rgb', bufferfmt='ubyte')
+    texture.flip_vertical()
+    return texture
+    
+def pyImageFromStr(str):
+    return PyImage.open(StringIO.StringIO(str))
 
 class PiKamModel(PiKamRequest):
     isoOptions = ISO_OPTIONS
@@ -160,18 +193,22 @@ class PiKamApp(App):
     exposureComp = 0 # TODO
     previewImage = None
     waitingForImage = False
+    previewTask  = None    
+
    
     def build(self):
         self.root = PiKamWidget()
         if self.config.get('Misc', 'splash') != '0' and os.path.exists('piKamSplash.jpg'):
-            self.displayImage('piKamSplash.jpg')
+            with open ('piKamSplash.jpg', "r") as splashFile:
+                data = splashFile.read()
+            self.displayImage(data)
         self.reconnect()
         return self.root
     
     def build_config(self, config):
         config.setdefaults('Server', {'hostname': 'localhost', 'port': '8000'}) 
         config.setdefaults('Camera', {'encoding': 'jpg', 'quality': 0, 'sharpness': 0, 'hflip': 0, 'vflip': 0})
-        config.setdefaults('Misc',   {'carousel': 1, 'splash': 1})
+        config.setdefaults('Misc',   {'carousel': 1, 'splash': 1, 'preview': 1, 'numSlides': 10, 'previewQuality':5})
         
     def build_settings(self, settings):
         # Javascript Object Notation
@@ -181,6 +218,12 @@ class PiKamApp(App):
         if config is self.config:
             if section == 'Server':
                 self.reconnect()
+            if key == 'preview':
+                doPreview = self.config.get('Misc', 'preview') != '0'
+                if doPreview:
+                    self.enablePreview()
+                else:
+                    self.disablePreview()
                 
     def displayInfo(self, message, title='Info'):
         popContent = BoxLayout(orientation='vertical')
@@ -218,30 +261,35 @@ class PiKamApp(App):
         self.busyWaiting = False
     
          
-    def displayImage(self, filename):
+    def displayImage(self, data):
         self.displayBusyWaiting()
         try:
             useCarousel = self.config.get('Misc', 'carousel') != '0'
             # On some droids kivy cannot load large images - so downsize for display
-            pyImg = PyImage.open(filename)
+            pyImg = PyImage.open(StringIO.StringIO(data))
+            # Convert to "thumbnail" display size in place.
             pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
-            previewFilename = filename + '.thumb.jpg'
-            pyImg.save(previewFilename)
-            image = Image(source=previewFilename)
+            # Load Kivy Image from PyImage without going to disk
+            image = Image(texture=textureFromPyImage(pyImg))
             if useCarousel:
                 self.root.imageCarousel.add_widget(image)
                 # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
                 self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
+                numSlides = int(self.config.get('Misc', 'numSlides'))
+                if len(self.root.imageCarousel.slides) > numSlides:
+                    self.root.imageCarousel.remove_widget(self.root.imageCarousel.slides[0])
             else:
                 self.root.imageLayout.clear_widgets()
                 self.root.imageLayout.add_widget(image)
+                
         finally:
             self.stopBusyWaiting()
 
-    def displayPreview(self, filename):
+    def displayPreview(self, data):
         useCarousel = self.config.get('Misc', 'carousel') != '0'
         if self.previewImage:
-            self.previewImage.reload()
+            #print 'update preview'
+            self.previewImage.texture = textureFromPyImage(pyImageFromStr(data))
             if useCarousel:
                 # Shuffle to end
                 oldIndex = self.root.imageCarousel.index
@@ -250,7 +298,8 @@ class PiKamApp(App):
                 if oldIndex == len(self.root.imageCarousel.slides) - 1:
                     self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
         else:
-            self.previewImage = Image(source=filename)
+            #print 'initial preview'
+            self.previewImage =  Image(texture=textureFromPyImage(pyImageFromStr(data)))
             self.previewImage.nocache = True
             if useCarousel:
                 oldIndex = self.root.imageCarousel.index
@@ -261,26 +310,6 @@ class PiKamApp(App):
             else:
                 self.root.imageLayout.clear_widgets()
                 self.root.imageLayout.add_widget(self.previewImage)
-
-    def requestPreview(self):
-        #print 'lv'
-        if self.waitingForImage:
-            print 'already waiting'
-            return
-        if self.root.imageCarousel.index != len(self.root.imageCarousel.slides) - 1:
-            # Not looking at preview - don't refresh it
-            return
-        self.takeSnapshot(preview=True)
-
-    def enablePreview(self):
-        print 'enablePreview'
-        self.waitingForImage = False
-        self.PreviewTask = task.LoopingCall(self.requestPreview)
-        self.PreviewTask.start(3) 
-        
-    def disablePreview(self):
-        if self.PreviewTask: 
-            self.PreviewTask.stop()
 
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
@@ -314,13 +343,9 @@ class PiKamApp(App):
                 filename = result['name']
                 with open(filename, 'wb') as imageFile:
                     imageFile.write(result['data'])
-                self.displayImage(filename)
+                self.displayImage(result['data'])
             elif result['type'] == 'preview':
-                # Save the image and add an internal copy to the GUI carousel.
-                filename = 'preview.jpg'
-                with open(filename, 'wb') as imageFile:
-                    imageFile.write(result['data'])
-                self.displayPreview(filename)  
+                self.displayPreview(result['data'])
             elif result['type'] == 'error':
                 self.displayError(result['message'])
             else:
@@ -338,8 +363,9 @@ class PiKamApp(App):
         if preview:
             args.height = 480
             args.width = 640
-            args.quality = 10
-            args.preview = True
+            args.encoding = 'jpg'
+            args.quality = int(self.config.get('Misc', 'previewQuality'))
+            args.replyMessageType = 'preview'
         command['args'] = args
         # Turn the request into a string so it can be sent in Netstring format
         self.sendRemoteCommand(cPickle.dumps(command))
@@ -357,6 +383,31 @@ class PiKamApp(App):
         port = self.config.getint('Server', 'port')
         reactor.connectTCP(hostname, port, PiKamClientFactory(self))
     
+    def requestPreview(self):
+        #print 'lv'
+        if self.waitingForImage:
+            print 'already waiting'
+            return
+        useCarousel = self.config.get('Misc', 'carousel') != '0'
+        if useCarousel and self.root.imageCarousel.index != len(self.root.imageCarousel.slides) - 1:
+            # Not looking at preview - don't refresh it
+            return
+        self.takeSnapshot(preview=True)
+
+    def enablePreview(self):
+        self.waitingForImage = False
+        if self.config.get('Misc', 'preview') == '0' or self.previewTask:
+            return
+        print 'enablePreview'
+        self.previewTask = task.LoopingCall(self.requestPreview)
+        self.previewTask.start(1.5) 
+        
+    def disablePreview(self):
+        if self.previewTask: 
+            print 'disablePreview'
+            self.previewTask.stop()
+            self.previewTask = None
+        self.waitingForImage = False
         
 if __name__ == '__main__':
     PiKamApp().run()
