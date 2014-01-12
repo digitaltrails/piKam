@@ -20,6 +20,9 @@ from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.graphics.texture import Texture
+from kivy.core.image import ImageData
+
+import pygame
 
 import Image as PyImage
 import cPickle
@@ -27,8 +30,8 @@ import os
 import inspect
 import StringIO
 
-from piKamServer import PiKamRequest
-from piKamServer import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
+from piKamCommon import PiKamRequest
+from piKamCommon import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
 
 
 SETTINGS_JSON_DATA = """[
@@ -116,11 +119,11 @@ SETTINGS_JSON_DATA = """[
 #print SETTINGS_JSON_DATA
 
 def textureFromPyImage(pyImg):
-    # Extract a texture from a PIL Image - avoids kivy reloading it from file
     raw = pyImg.tostring()
     width, height = pyImg.size
-    texture = Texture.create(size=(width, height))
-    texture.blit_buffer(raw, colorfmt='rgb', bufferfmt='ubyte')
+    print width, height
+    imdata = ImageData(width, height, 'rgb', raw)
+    texture = Texture.create_from_data(imdata)
     texture.flip_vertical()
     return texture
     
@@ -299,7 +302,7 @@ class PiKamApp(App):
                     self.root.imageCarousel.index = len(self.root.imageCarousel.slides) - 1
         else:
             #print 'initial preview'
-            self.previewImage =  Image(texture=textureFromPyImage(pyImageFromStr(data)))
+            self.previewImage =  Image(texture=textureFromPyImage(pyImageFromStr(data)),mipmap=True)
             self.previewImage.nocache = True
             if useCarousel:
                 oldIndex = self.root.imageCarousel.index
@@ -364,7 +367,7 @@ class PiKamApp(App):
             args.height = 480
             args.width = 640
             args.encoding = 'jpg'
-            args.quality = int(self.config.get('Misc', 'previewQuality'))
+            args.quality = self.config.get('Misc', 'previewQuality')
             args.replyMessageType = 'preview'
         command['args'] = args
         # Turn the request into a string so it can be sent in Netstring format

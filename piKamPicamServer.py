@@ -14,9 +14,8 @@ import StringIO
 
 import picam
 
-from piKamServer import PiKamRequest, PiKamServerProtocal
-from piKamServer import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
-
+from piKamCommon import SCENE_OPTIONS,AWB_OPTIONS,METERING_OPTIONS,IMXFX_OPTIONS,COLFX_OPTIONS,ISO_OPTIONS,ENCODING_OPTIONS
+from piKamServer import PiKamServerProtocal
 
 class PiKamPicamServerProtocal(PiKamServerProtocal):
    
@@ -82,7 +81,7 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
             #picam.config.shutterSpeed = 20000         # 0 = auto, otherwise the shutter speed in ms
             width = request.width if request.width else self.MAX_WIDTH
             height = request.height if request.height else self.MAX_HEIGHT
-            quality = request.quality if request.quality else self.DEFAULT_QUALITY
+            quality = int(request.quality) if request.quality else self.DEFAULT_QUALITY
             
             if request.zoomTimes > 1.0:
                 sz = 1.0/request.zoomTimes
