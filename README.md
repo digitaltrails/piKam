@@ -1,18 +1,30 @@
 # piKam - Raspberry Pi Kivy User Interface
 
+## Recent changes
+#### 2014/01/12  
+* Now with live/zombie preview. 
+* Eliminated to need to write thumbnails and previews to disk.
+* Adjusted +-ev values (the docs for raspistill seem wrong on value range).
+* New piKamCommon.py to install on the client and server.
+
+## Introduction
+
 The piKam python Kivy application provides a remote interface
 to a Raspberry Pi camera.  You can run piKam on any supported
-Kivy platform and remotely drive a camera on a Raspberry Pi.
+Kivy platform (Linux, Android, Windows, etc) and remotely 
+drive the camera on a Raspberry Pi.
 
 <img src="https://raw.github.com/digitaltrails/piKam/master/screenshot.jpg">&nbsp;&nbsp;&nbsp;<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot2.jpg">
 
 ## Warnings/Issues:
-* No security.
-* No live view.
-* GUI keeps all images in memory until it is exited.
+* No security, no encryption (if your network has other users, they can also connect to the server).
 * Running multiple raspistills at the same time can cause the camera to lock up.
+* The picam-based server's zoom isn't fully working.
+* The live view is semi-live, it's slow, perhaps a zombie-view more than a live-view.
+* Kivy settings don't seem to value restrictions and I haven't yet coded any sanity checks of my own.
+* Switching to scene mode Auto seems to improve brightness/contrast.
+* -ev doesn't seem to do much.
 
-  
 ## Prerequisites
 
 ### On your RaspberryPi - assuming Raspbian
@@ -48,7 +60,7 @@ any platform supported by Kivy.
 ## Install piKam and Test
 
 ### On your Raspberry Pi
-Copy piKamServer.py to your Raspberry Pi. Start the server - at the shell prompt:  
+Copy piKamServer.py and piKamCommon.py to your Raspberry Pi. Start the server - at the shell prompt:  
 
          python piKamServer.py
          
@@ -56,6 +68,9 @@ If you wish to use the picam python module for direct camera access, then also
 copy piKamPicamServer.py to your Raspberry Pi and run that instead:
      
          python piKamPicamServer.py
+         
+The picam version is faster and probably to be preferred.
+
 ### On your selected Kivy client platform 
 
 ##### Linux Kivy Client: 
@@ -65,7 +80,7 @@ Copy all the piKam files to this folder.
 2. In a shell, cd to the piKam folder and enter: 
 
    ```
-   python piKam.py
+   python main.py
    ```
    
    A GUI should fire up.
@@ -90,5 +105,15 @@ Kivy runs on a wide variety of platforms, installation would probably be similar
 
 ## Controls:
 Mostly obvious.
-Swipe left right on the image to goto prev/next.    
-Photos are written to the client install folder.
+
+* Swipe left right on the image to goto prev/next on the image carousel.  The 
+  carousel is limited to the 10 most recent images.
+* Photos are written to the client install folder.
+* Take a look at the settings menu for options/customisations (F1 on Linux, Tap Settings on Android).
+* If live view is enabled, the rightmost image on the carousel will display 
+  a low quality preview with the camera settings applied. If you move the
+  view away from the rightmost image, the the live view network traffic 
+  suspends until the rightmost image is again visible.  
+* The way live view is coded may mean you don't get much/any time to review a picture, 
+  but you can always scroll the carousel to suspend live view and 
+  review past images.
