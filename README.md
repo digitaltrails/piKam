@@ -4,7 +4,7 @@ The piKam python Kivy application provides a remote interface
 to a Raspberry Pi camera.  You can run piKam on any supported
 Kivy platform and remotely drive a camera on a Raspberry Pi.
 
-<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot.jpg">
+<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot.jpg">&nbsp;&nbsp;&nbsp;<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot2.jpg">
 
 ## Warnings/Issues:
 * No security.
