@@ -22,8 +22,6 @@ from kivy.uix.button import Button
 from kivy.graphics.texture import Texture
 from kivy.core.image import ImageData
 
-import pygame
-
 import Image as PyImage
 import cPickle
 import os
