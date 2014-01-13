@@ -18,18 +18,20 @@ drive the camera on a Raspberry Pi.
 
 ## Warnings/Issues:
 * No security, no encryption (if your network has other users, they can also connect to the server).
-* Running multiple raspistills at the same time can cause the camera to lock up.
 * The picam-based server's zoom isn't fully working.
 * The live view is semi-live, it's slow, perhaps a zombie-view more than a live-view.
 * Kivy settings don't seem to support placing restrictions on values and I haven't yet coded any sanity checks of my own.
 * Switching to scene mode Auto seems to improve brightness/contrast.
-* -ev doesn't seem to do much.
+* Negative ev sometimes doesn't seem to do much.
+* Running multiple raspistills at the same time can cause the camera to lock up (it's best not to run more than one client at a time).
 
 ## Prerequisites
 
 ### On your RaspberryPi - assuming Raspbian
 Install the python-twisted package (used for client/server networking).
-
+```
+sudo apt-get install python-twisted
+```
 PiKam inclues a server that uses the raspistill command to drive the 
 camera.  If you setup your Raspberry Pi so that raspistill works,
 then piKam shold work too.
@@ -41,9 +43,9 @@ the picam module then follow Sean's installation instructions at  https://github
 
 Picam requires the python image library, which can be
 installed by running the following command:
-  
+```  
    sudo apt-get install python-imaging-tk
-
+```
 ### On your selected Kivy client platform 
 
 I use piKam on Linux and Android, but it would likely run on
