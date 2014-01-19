@@ -1,6 +1,11 @@
 # piKam - Raspberry Pi Kivy User Interface
 
 ## Recent changes
+
+#### 2014/01/20
+* The user interface app can now be run on the Raspberry Pi without running the server (limited by Kivy bugs - see Issues).
+* The app now has horizontal and vertical layouts (configuration switch). 
+
 #### 2014/01/12  
 * Now with live/zombie preview. 
 * Eliminated to need to write thumbnails and previews to disk.
@@ -24,6 +29,9 @@ drive the camera on a Raspberry Pi.
 * Switching to scene mode Auto seems to improve brightness/contrast.
 * Negative ev sometimes doesn't seem to do much.
 * Running multiple raspistills at the same time can cause the camera to lock up (it's best not to run more than one client at a time).
+* Although the application can be run on the Raspberry Pi, due to bugs in the port of Kivy to the Raspberry Pi the mouse position is not visible which makes it pretty hard to use. 
+
+
 
 ## Prerequisites
 
@@ -38,7 +46,10 @@ then piKam shold work too.
 
 ##### Optional picam support
 I've included an alternate server that directly accesses
-the camera via Sean Ashton's picam module.  If you wish to use 
+the camera via Sean Ashton's picam module.  I'd recommend using this module
+if you're interested in a server that is a bit more responsive.  
+
+If you wish to use 
 the picam module then follow Sean's installation instructions at  https://github.com/ashtons/picam/blob/master/README.md
 
 Picam requires the python image library, which can be
@@ -52,14 +63,24 @@ I use piKam on Linux and Android, but it would likely run on
 any platform supported by Kivy.
 
 ##### Linux Kivy Client:
-  Install Kivy - most distributions seem to have a kivy package available. 
-  On OpenSUSE this seemed to install everything needed including Twisted.
+Install Kivy - most distributions seem to have a kivy package available. 
+On OpenSUSE this seemed to install everything needed including Twisted.
 
 ##### Android Kivy Client:
-  Install the "Kivy Launcher" app from the Play Store.
-     
+Install the "Kivy Launcher" app from the Play Store.
+
+##### Raspberry Pi Kivy Client:
+
+Getting kivy running on a Raspberry Pi is still a bit of a mission.
+For getting the prerequisites I followed the instructions at:
+http://wonderfulcode.tumblr.com/post/54102854344/kivy-on-raspberry-pi
+But for the actual install I followed the instuctsion at
+http://kivy.org/docs/installation/installation-linux.html
+and did a sudo easy_install kivy
  
 ## Install piKam and Test
+
+Having installed the prerequisites, you can now install PiKam...
 
 ### On your Raspberry Pi
 Copy piKamServer.py and piKamCommon.py to your Raspberry Pi. Start the server - at the shell prompt:  
@@ -75,7 +96,7 @@ The picam version is faster and probably to be preferred.
 
 ### On your selected Kivy client platform 
 
-##### Linux Kivy Client: 
+##### Linux PiKam Client: 
 
 1. Create a folder called piKam (or anything you prefer).
 Copy all the piKam files to this folder. 
@@ -91,7 +112,7 @@ Copy all the piKam files to this folder.
 4. Set the address of you RaspberryPi and close settings.
 5. See if you can connect and "Capture" a photo.
     
-##### Android Kivy Client: 
+##### Android PiKam Client: 
 1. Find where "Kivy Launcher" put it's apps folder.
    * Lets say you find that Kivy Launcher is using /sdcard0/kivy/
    * Create a sub-folder /sdcard0/kivy/pikam 
@@ -100,6 +121,33 @@ Copy all the piKam files to this folder.
 4. Tap the standard Android settings button/icon to bring up the piKam settings dialog. 
 5. Set the address of you RaspberryPi and close settings.
 7. See if you can connect and take a photo.
+
+##### Raspberry Pi Pikam Client
+The PiKam client user interface can be run directly on the Raspberry Pi, but
+due to bugs in the port of Kivy to the Raspberry Pi it's not much more than
+a previewer or proof of concept:
+* Although the mouse works, the mouse cursor is not visible, which makes
+  doing almost anything quite difficult.
+* From what I gather the keyboard may also have issues.
+
+If you have Kivy installed:
+1. Create a folder called piKam (or anything you prefer).
+Copy all the piKam files to this folder. 
+2. Runnin a server is option, if you want PiKam to work directly without a server
+edit the pikam.ini file and make sure the server hostname is blank. 
+3. In a shell, cd to the piKam folder and enter: 
+
+   ```
+   python main.py
+   ```
+   
+   A GUI should fire up. If you're running directly without a server, a preview should be visible.
+
+4. Mousing and clicking around may work.  Control-C (possibly multiple times)
+will exit the GUI. 
+
+(Note that you can't run a Raspberry Pi Kivy client remotely
+over the X11 protocal, so you can't work around the problems that way.)
 
 ##### Other clients
 
@@ -119,3 +167,4 @@ Mostly obvious.
 * The way live view is coded may mean you don't get much/any time to review a picture, 
   but you can always scroll the carousel to suspend live view and 
   review past images.
+* On Linux use F1 to get the settings, on Android use your settings key/symbol.
