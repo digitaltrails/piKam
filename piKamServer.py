@@ -33,7 +33,8 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         cmd = Pickler.loads(data)
         # Retreive the command from the dictionary
         if cmd['cmd'] == 'shoot':
-            self.shoot(cmd)
+            imageFilename, imageBinary, replyMessageType = self.takePhoto(cmd['args'])
+            self.transmitPhoto(imageFilename, imageBinary, replyMessageType)
         elif cmd['cmd'] == 'prepareCamera':
             self.prepareCamera(cmd)
         else:
@@ -86,21 +87,9 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         replyMessageType = request.replyMessageType
         return args, imageFilename, imageType, replyMessageType
 
-    def shoot(self, cmd):
-        raspistillCmd, imageFilename, imageType, replyMessageType = self.createShootCommand(cmd['args']) 
-        output, err, rc = self.osCommand(raspistillCmd if not TEST_IMAGE else [ 'sleep', '2' ])            
-        print output
-        print err
-
-        if rc == 0:
-            imageBinary = None
-            print imageFilename
-            with open(imageFilename if not TEST_IMAGE else TEST_IMAGE, 'rb') as jpegFile:
-                imageBinary = jpegFile.read()
-            if imageBinary:
-                data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
-            else:
-                data = {'type':'error', 'message':'Problem reading captured file.'}
+    def transmitPhoto(self, imageFilename, imageBinary, replyMessageType):
+        if imageBinary != None:
+            data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
         else:
             data = {'type':'error', 'message':'Problem during capture.'}
         # Turn the dictionary into a string so we can send it in Netstring format.
@@ -108,7 +97,19 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         print str(len(message))
         # Return a Netstring message to the client - will include the jpeg if all went well
         self.transport.write(str(len(message)) + ':' + message + ',')
- 
+
+    def takePhoto(self, parameters):
+        imageBinary = None
+        raspistillCmd, imageFilename, imageType, replyMessageType = self.createShootCommand(parameters) 
+        output, err, rc = self.osCommand(raspistillCmd if not TEST_IMAGE else [ 'sleep', '2' ])            
+        print output
+        print err
+        if rc == 0:
+            print imageFilename
+            with open(imageFilename if not TEST_IMAGE else TEST_IMAGE, 'rb') as imageFile:
+                imageBinary = imageFile.read()
+        return imageFilename, imageBinary, replyMessageType
+        
     def prepareCamera(self, cmd):
         """Put the camera in to recording mode."""
         #self.osCommand(['/home/pi/chdkptp.sh', '-econnect', '-erec'])

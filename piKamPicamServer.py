@@ -31,7 +31,8 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         cmd = Pickler.loads(data)
         # Retreive the command from the dictionary
         if cmd['cmd'] == 'shoot':
-            self.shoot(cmd)
+            imageFilename, imageBinary, replyMessageType = self.takePhoto(cmd['args'])
+            self.transmitPhoto(imageFilename, imageBinary, replyMessageType)
         elif cmd['cmd'] == 'prepareCamera':
             self.prepareCamera(cmd)
         else:
@@ -47,18 +48,36 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         #self.osCommand(['/home/pi/chdkptp.sh', '-econnect', '-erec'])
         pass
 
-    def shoot(self, cmd):
+    
+    def transmitPhoto(self, imageFilename, imageBinary, replyMessageType):
+        #print imageFilename, str(len(imageBinary))
+        if imageBinary:
+            data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
+        else:
+            print 'error'
+            data = {'type':'error', 'message':'Problem reading captured file.'}
+        # data = {'type':'error', 'message':'Problem during capture.'}
+        # Turn the dictionary into a string so we can send it in Netstring format.
+        message = Pickler.dumps(data, Pickler.HIGHEST_PROTOCOL)
+        # Return a Netstring message to the client - will include the jpeg if all went well
+        #self.transport.write(str(len(message)) + ':' + message + ',')
+        self.transport.write(str(len(message)))
+        self.transport.write(':')
+        self.transport.write(message)
+        self.transport.write(',')
+        
+    def takePhoto(self, parameters):
         while self.shooting:
             print 'sleeping'
             self._sleep(1)
         try:
             self.shooting = True
-            request = cmd['args']
-            print vars(request)
+            request = parameters
+            #print vars(request)
             imageType = request.encoding if request.encoding else 'jpg'
             imageFilename = 'IMG-' + datetime.now().isoformat().replace(':','_') + '.' + imageType
             imageType = request.encoding if request.encoding != 'jpg' else 'JPEG'
-            replyMessageType = request.replyMessageType
+            replyType = request.replyMessageType
             #print imageType, imageFilename
 
             picam.config.imageFX = IMXFX_OPTIONS.index(request.imxfx) if request.imxfx else 0
@@ -94,18 +113,9 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
             image.save(buffer, imageType)
             imageBinary = buffer.getvalue()
             buffer.close()
+            print replyType, imageType, 'imgsz=', str(len(imageBinary))
             #print imageFilename, str(len(imageBinary))
-            if imageBinary:
-                data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
-            else:
-                print 'error'
-                data = {'type':'error', 'message':'Problem reading captured file.'}
-            # data = {'type':'error', 'message':'Problem during capture.'}
-            # Turn the dictionary into a string so we can send it in Netstring format.
-            message = Pickler.dumps(data)
-            print replyMessageType, imageType, 'len=', str(len(message))
-            # Return a Netstring message to the client - will include the jpeg if all went well
-            self.transport.write(str(len(message)) + ':' + message + ',')
+            return imageFilename, imageBinary, replyType
         finally:
             self.shooting = False
  

@@ -9,7 +9,178 @@
     size_hint: 1,.15
     text: ctx.text if hasattr(ctx, 'text') else ''
 
-<PiKamWidget>:
+<PiKamHorizontalScreen>:
+    imageLayout: imageLayout
+    imageCarousel: carousel
+    downloadProgress: downloadProgress
+    BoxLayout:
+        width:root.width
+        height:root.height
+        orientation:'horizontal'
+
+        BoxLayout:
+            width:root.width
+            height:root.height
+            orientation:'vertical'
+
+            GridLayout:
+                size_hint: 1, .07
+                cols: 4
+    
+                Label:
+                    text: "AWB"
+                Spinner:
+                    text: app.model.awb
+                    values: app.model.awbOptions   
+                    on_text: app.model.awb = self.text                
+                Label:
+                    text: "Scene"           
+                Spinner:
+                    text: app.model.scene
+                    values: app.model.sceneOptions
+                    on_text: app.model.scene = self.text              
+                Label:
+                    text: "Metering"
+                Spinner:
+                    text: app.model.metering
+                    values: app.model.meteringOptions   
+                    on_text: app.model.metering = self.text
+                Label:
+                    text: "Imx Fx"           
+                Spinner:
+                    text: app.model.imxfx
+                    values: app.model.imfxOptions
+                    on_text: app.model.imxfx = self.text              
+    
+            GridLayout:
+                id: imageLayout
+                size_hint: 1, .4
+                cols: 1
+                Carousel:
+                    id: carousel
+            ProgressBar
+                id: downloadProgress
+                size_hint: 1, .01
+                max: 12000000
+    
+    
+            GridLayout:
+                size_hint: 1, .05
+                cols: 2
+                Button:
+                    text: 'Capture'
+                    on_press: app.takeSnapshot()
+                Button:
+                    text: 'Reconnect'
+                    on_press: app.reconnect()
+        Splitter:
+            sizable_from: 'left'
+            size_hint: .2, 1
+            width: 400
+            GridLayout:
+                rows: 6
+                size_hint: .3, 1
+                padding: [15,0]
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: evSelected
+                            text: str(app.model.ev) + " ev"
+                        SliderLabel:
+                            text: "Exp"
+                            halign: "left"
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.ev
+                        min: -3
+                        max: 3
+                        on_value: app.model.ev = int(self.value); evSelected.text = str(app.model.ev) + " ev"
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: zoomSelected
+                            text: "x " + str(app.model.zoomTimes)
+                        SliderLabel:
+                            text: "Zoom"
+                            halign: "left"
+
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.zoomTimes
+                        min: 1
+                        max: 10 
+                        on_value: app.model.zoomTimes = int(self.value); zoomSelected.text = "x " + str(app.model.zoomTimes)
+     
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: isoSelected
+                            text: app.model.iso
+                        SliderLabel:
+                            text: "ISO"
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.isoOptions.index(app.model.iso)
+                        min: 0
+                        max: len(app.model.isoOptions) - 1  
+                        on_value: app.model.iso = app.model.isoOptions[int(self.value + 0.5)] ; isoSelected.text = app.model.iso
+    
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: brightnessSelected
+                            text: str(app.model.brightness) + "%"
+                        SliderLabel:
+                            text: "Br"
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.brightness
+                        min: 0
+                        max: 100
+                        on_value: app.model.brightness = int(self.value + 0.5); brightnessSelected.text = str(app.model.brightness) + "%"
+    
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: contrastSelected
+                            text: str(app.model.contrast) + "%"
+                        SliderLabel:
+                            text: "Cont"
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.contrast
+                        min: -100
+                        max: 100
+                        on_value: app.model.contrast = int(self.value + 0.5); contrastSelected.text = str(app.model.contrast) + "%"
+    
+                BoxLayout:
+                    orientation: "vertical"
+                    BoxLayout:
+                        orientation: "horizontal"
+                        SliderLabel:
+                            id: saturationSelected
+                            text: str(app.model.saturation) + "%"
+                        SliderLabel:
+                            text: "Sat"
+                    Slider:
+                        orientation: "horizontal"
+                        value: app.model.saturation
+                        min: -100
+                        max: 100
+                        on_value: app.model.saturation = int(self.value + 0.5); saturationSelected.text = str(app.model.saturation) + "%"
+
+<PiKamVerticalScreen>:
     imageLayout: imageLayout
     imageCarousel: carousel
     downloadProgress: downloadProgress
