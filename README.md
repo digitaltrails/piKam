@@ -125,10 +125,11 @@ Copy all the piKam files to this folder.
 
 ##### Raspberry Pi Pikam Client
 The PiKam client user interface can be run directly on the Raspberry Pi, but
-due to bugs in the port of Kivy to the Raspberry Pi it's not much more than
-a previewer or proof of concept until Kivy is fixed:
+due to bugs in the port of Kivy to the Raspberry Pi you probably need a
+monitor with touch-screen support for it to be of much use:
 * Although the mouse works, the mouse cursor is not visible, which makes
-  doing almost anything quite difficult.
+  doing almost anything quite difficult - a touch screen would
+  work around this issue.
 * From what I gather the keyboard may also have issues.
 
 If you have Kivy installed:
