@@ -29,7 +29,8 @@ drive the camera on a Raspberry Pi.
 * Switching to scene mode Auto seems to improve brightness/contrast.
 * Negative ev sometimes doesn't seem to do much.
 * Running multiple raspistills at the same time can cause the camera to lock up (it's best not to run more than one client at a time).
-* Although the application can be run on the Raspberry Pi, due to bugs in the port of Kivy to the Raspberry Pi the mouse position is not visible which makes it pretty hard to use. 
+* Although the application can be run on the Raspberry Pi, due to bugs in the port of Kivy to the Raspberry Pi its not as usable the other platforms.
+* Until Kivy supports Android rotation events, the App does not auto-rotate.
 
 
 
@@ -71,10 +72,10 @@ Install the "Kivy Launcher" app from the Play Store.
 
 ##### Raspberry Pi Kivy Client:
 
-Getting kivy running on a Raspberry Pi is still a bit of a mission.
-For getting the prerequisites I followed the instructions at:
+Getting kivy running on a Raspberry Pi is still a bit tricky:
+* For getting the prerequisites I followed the instructions at:
 http://wonderfulcode.tumblr.com/post/54102854344/kivy-on-raspberry-pi
-But for the actual install I followed the instuctsion at
+* But for the actual install I followed the instuctsion at
 http://kivy.org/docs/installation/installation-linux.html
 and did a sudo easy_install kivy
  
@@ -125,7 +126,7 @@ Copy all the piKam files to this folder.
 ##### Raspberry Pi Pikam Client
 The PiKam client user interface can be run directly on the Raspberry Pi, but
 due to bugs in the port of Kivy to the Raspberry Pi it's not much more than
-a previewer or proof of concept:
+a previewer or proof of concept until Kivy is fixed:
 * Although the mouse works, the mouse cursor is not visible, which makes
   doing almost anything quite difficult.
 * From what I gather the keyboard may also have issues.
@@ -143,7 +144,7 @@ edit the pikam.ini file and make sure the server hostname is blank.
    
    A GUI should fire up. If you're running directly without a server, a preview should be visible.
 
-4. Mousing and clicking around may work.  Control-C (possibly multiple times)
+4. Mousing and clicking around may work, but you won't be able to see the mouse cusor.  Control-C (possibly multiple times)
 will exit the GUI. 
 
 (Note that you can't run a Raspberry Pi Kivy client remotely
