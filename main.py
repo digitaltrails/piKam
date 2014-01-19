@@ -216,16 +216,17 @@ class PiKamApp(App):
     previewImage = None
     waitingForImage = False
     previewTask  = None    
-    sm = None
+    screenMgr = None
     directCamera = None
    
     def build(self):
-        self.sm = ScreenManager()
-        h = PiKamHorizontalScreen(name='horz')
-        v = PiKamVerticalScreen(name='vert')    
+        self.screenMgr = ScreenManager()
+        horzScreen = PiKamHorizontalScreen(name='horz')
+        vertScreen = PiKamVerticalScreen(name='vert')    
         x,y = Window.system_size
-        for w in ( h, v ) if (x > y or self.config.get('Misc', 'horizontalLayout') == '1') else ( v, h ):
-            self.sm.add_widget(w) 
+        detectedLandscape = x > y and False # Not working on Android - darn!
+        for screenWidget in ( horzScreen, vertScreen ) if (detectedLandscape or self.config.get('Misc', 'horizontalLayout') == '1') else ( vertScreen, horzScreen ):
+            self.screenMgr.add_widget(screenWidget) 
  
         if self.config.get('Misc', 'splash') != '0' and os.path.exists('piKamSplash.jpg'):
             with open ('piKamSplash.jpg', "r") as splashFile:
@@ -235,14 +236,14 @@ class PiKamApp(App):
         print vars(self)
         #Window.rotation = Window.rotation + 90
         Window.on_rotate(self.rotate)
-        return self.sm
+        return self.screenMgr
     
     def rotate(self, screenName=None):
         print "rotate"
-        if self.sm.current == 'horz':
-            self.sm.current = 'vert'
+        if self.screenMgr.current == 'horz':
+            self.screenMgr.current = 'vert'
         else:
-            self.sm.current = 'horz'
+            self.screenMgr.current = 'horz'
         #Window.rotation = Window.rotation + 90
     
     def build_config(self, config):
@@ -261,6 +262,10 @@ class PiKamApp(App):
             if key == 'preview' or key == 'previewQuality' or key == 'previewRefresh':
                 self.disablePreview()
                 self.enablePreview()
+            if key == 'horizontalLayout':
+                self.screenMgr.current = 'horz' if self.config.get('Misc', 'horizontalLayout') != '0' else 'vert'
+                # Force image to be regenerated and reparented in new widget hierarchy
+                self.previewImage = None
                 
     def displayInfo(self, message, title='Info'):
         popContent = BoxLayout(orientation='vertical')
@@ -273,7 +278,7 @@ class PiKamApp(App):
         popup.open()
 
     def currentTop(self):
-        return self.sm.current_screen
+        return self.screenMgr.current_screen
 
     def displayError(self, message, title='Error'):
         self.displayInfo(message, title)
