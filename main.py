@@ -247,7 +247,7 @@ class PiKamApp(App):
         #Window.rotation = Window.rotation + 90
     
     def build_config(self, config):
-        config.setdefaults('Server', {'hostname': 'localhost', 'port': '8000'}) 
+        config.setdefaults('Server', {'hostname': '', 'port': '8000'}) 
         config.setdefaults('Camera', {'encoding': 'jpg', 'quality': 0, 'sharpness': 0, 'hflip': 0, 'vflip': 0})
         config.setdefaults('Misc',   {'carousel': 1, 'splash': 1, 'preview': 1, 'horizontalLayout':1, 'numSlides': 10, 'previewQuality':5, 'previewRefresh':1.5})
         
