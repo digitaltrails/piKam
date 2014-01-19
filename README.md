@@ -19,7 +19,7 @@ to a Raspberry Pi camera.  You can run piKam on any supported
 Kivy platform (Linux, Android, Windows, etc) and remotely 
 drive the camera on a Raspberry Pi.
 
-<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot.jpg">&nbsp;&nbsp;&nbsp;<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot2.jpg">
+<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot.jpg">&nbsp;&nbsp;&nbsp;<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot2.jpg">&nbsp;&nbsp;&nbsp;<img src="https://raw.github.com/digitaltrails/piKam/master/screenshot3.jpg">
 
 ## Warnings/Issues:
 * No security, no encryption (if your network has other users, they can also connect to the server).
