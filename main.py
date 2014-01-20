@@ -241,20 +241,8 @@ class PiKamApp(App):
         print vars(self)
         #Window.rotation = Window.rotation + 90
         Window.on_rotate(self.rotate)
-        Window.bind(on_motion=self.plot_motion)
         return self.screenMgr
-    
-    def plot_motion(self, x, etype, motionevent):
-        if self.runningOnPi:
-            # Cannot see where mouse is on Raspberry Pi Kivy - provide some
-            # indicator.                 
-            #self.screenMgr.current_screen.canvas.add(Color(1., 1., 0))
-            if self.mark:
-                 self.screenMgr.current_screen.canvas.remove(self.mark)
-            self.mark = Rectangle(pos=motionevent.pos, size=(5, 5))
-            #self.mark = Line(circle=(motionevent.ox, motionevent.oy, 10.0))
-            self.screenMgr.current_screen.canvas.add(self.mark)
-    
+        
     def rotate(self, screenName=None):
         print "rotate"
         if self.screenMgr.current == 'horz':
@@ -373,6 +361,7 @@ class PiKamApp(App):
                 self.currentTop().imageLayout.clear_widgets()
                 self.currentTop().imageLayout.add_widget(self.previewImage)
 
+
     def on_connection(self, connection):
         self.displayInfo('Connected succesfully!')
         self.chdkConnection = connection  
@@ -381,9 +370,20 @@ class PiKamApp(App):
         
     def on_start(self):
         if self.runningOnPi:
+            # On a Raspberry Pi - start preview - make mouse pos visible.
+            Clock.schedule_interval(self.plot_motion, .1)
             # On a Raspberry Pi - start preview - if remote it
             # will be started by on_connection
             self.enablePreview()
+
+    def plot_motion(self, *args):
+        # Cannot see where mouse is on Raspberry Pi Kivy - provide some
+        # indicator.                 
+        #self.screenMgr.current_screen.canvas.add(Color(1., 1., 0))
+        if self.mark:
+             self.screenMgr.current_screen.canvas.remove(self.mark)
+        self.mark = Rectangle(pos=Window.mouse_pos, size=(5, 5))
+        self.screenMgr.current_screen.canvas.add(self.mark)
 
     def on_pause(self):
         #reactor._mainLoopShutdown()
@@ -516,6 +516,7 @@ class PiKamApp(App):
                 from functools import partial
                 Clock.schedule_once(partial(self.displayImage, imageBinary))
         except:
+            # catching everthing - bad - need to fix
             self.displayError('Error on attemping direct photo.\nNo remote hostname set, you need to be running this on a Raspberry Pi.')
         finally:
             self.waitingForImage = False
