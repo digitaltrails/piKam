@@ -127,9 +127,10 @@ Copy all the piKam files to this folder.
 The PiKam client user interface can be run directly on the Raspberry Pi, but
 due to bugs in the port of Kivy to the Raspberry Pi you probably need a
 monitor with touch-screen support for it to be of much use:
-* Although the mouse works, the mouse cursor is not visible, which makes
+* Although the mouse works, the mouse cursor is not visible. This makes
   doing almost anything quite difficult - a touch screen would
-  work around this issue.   As a temporary measure, I've added code 
+  work around this issue because the pointer location would always
+  be under your finger.   As a temporary measure I've added code 
   that draws a small white square under the mouse location while the mouse is clicked (kivy
   does not seem to have a mouse motion event that I can use to continuously
   plot the location of an unclicked mouse).
