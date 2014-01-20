@@ -129,13 +129,17 @@ due to bugs in the port of Kivy to the Raspberry Pi you probably need a
 monitor with touch-screen support for it to be of much use:
 * Although the mouse works, the mouse cursor is not visible, which makes
   doing almost anything quite difficult - a touch screen would
-  work around this issue.
+  work around this issue.   As a temporary measure, I've added code 
+  that draws a small white square under the mouse location while the mouse is clicked (kivy
+  does not seem to have a mouse motion event that I can use to continuously
+  plot the location of an unclicked mouse).
 * From what I gather the keyboard may also have issues.
 
 If you have Kivy installed:
+
 1. Create a folder called piKam (or anything you prefer). Copy all the piKam files to this folder. 
 2. Running a server is option, if you want PiKam to work directly without a server
-edit the pikam.ini file and make sure the server hostname is blank. 
+   edit the pikam.ini file and make sure the server hostname is blank. 
 3. In a shell, cd to the piKam folder and enter: 
 
    ```
@@ -144,8 +148,7 @@ edit the pikam.ini file and make sure the server hostname is blank.
    
    A GUI should fire up. If you're running directly without a server, a preview should be visible.
 
-4. Mousing and clicking around may work, but you won't be able to see the mouse cusor.  Control-C (possibly multiple times)
-will exit the GUI (hopefully).
+4. Mousing and clicking around may work, but you won't be able to see the mouse cusor.  Control-C (possibly multiple times) will exit the GUI (hopefully).
 
 (Note that you can't run a Raspberry Pi Kivy client remotely
 over the X11 protocal, so you can't work around the problems that way.)
