@@ -23,6 +23,7 @@ from kivy.graphics.texture import Texture
 from kivy.core.image import ImageData
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.core.window import Window
+from kivy.graphics import Rectangle
 
 import Image as PyImage
 import cPickle
@@ -218,8 +219,12 @@ class PiKamApp(App):
     previewTask  = None    
     screenMgr = None
     directCamera = None
-   
+    mark = None
+    runningOnPi = False
+    usingDirectPicam = False
+    
     def build(self):
+        self.runningOnPi = str.strip(self.config.get('Server', 'hostname')) == ''
         self.screenMgr = ScreenManager()
         horzScreen = PiKamHorizontalScreen(name='horz')
         vertScreen = PiKamVerticalScreen(name='vert')    
@@ -236,7 +241,19 @@ class PiKamApp(App):
         print vars(self)
         #Window.rotation = Window.rotation + 90
         Window.on_rotate(self.rotate)
+        Window.bind(on_motion=self.plot_motion)
         return self.screenMgr
+    
+    def plot_motion(self, x, etype, motionevent):
+        if self.runningOnPi:
+            # Cannot see where mouse is on Raspberry Pi Kivy - provide some
+            # indicator.                 
+            #self.screenMgr.current_screen.canvas.add(Color(1., 1., 0))
+            if self.mark:
+                 self.screenMgr.current_screen.canvas.remove(self.mark)
+            self.mark = Rectangle(pos=motionevent.pos, size=(5, 5))
+            #self.mark = Line(circle=(motionevent.ox, motionevent.oy, 10.0))
+            self.screenMgr.current_screen.canvas.add(self.mark)
     
     def rotate(self, screenName=None):
         print "rotate"
@@ -306,7 +323,7 @@ class PiKamApp(App):
         self.busyWaiting = False
     
          
-    def displayImage(self, data):
+    def displayImage(self, data, *args):
         self.displayBusyWaiting()
         try:
             useCarousel = self.config.get('Misc', 'carousel') != '0'
@@ -330,7 +347,7 @@ class PiKamApp(App):
         finally:
             self.stopBusyWaiting()
 
-    def displayPreview(self, data):
+    def displayPreview(self, data, *args):
         useCarousel = self.config.get('Misc', 'carousel') != '0'
         if self.previewImage:
             #print 'update preview'
@@ -363,7 +380,7 @@ class PiKamApp(App):
         self.enablePreview()
         
     def on_start(self):
-        if self.config.get('Server', 'hostname') == '':
+        if self.runningOnPi:
             # On a Raspberry Pi - start preview - if remote it
             # will be started by on_connection
             self.enablePreview()
@@ -418,10 +435,9 @@ class PiKamApp(App):
             args.quality = self.config.get('Misc', 'previewQuality')
             args.replyMessageType = 'preview'
             
-        if self.config.get('Server', 'hostname') == '':
+        if self.runningOnPi:
             # On a Raspberry Pi already
             self.directSnapshot(args, preview)
-            self.waitingForImage = False
         else:
             command['args'] = args
             # Turn the request into a string so it can be sent in Netstring format
@@ -437,9 +453,9 @@ class PiKamApp(App):
         pass
         
     def reconnect(self):
-        hostname = self.config.get('Server', 'hostname')
-        if hostname == '':
+        if self.runningOnPi:
             return
+        hostname = self.config.get('Server', 'hostname')
         port = self.config.getint('Server', 'port')
         reactor.connectTCP(hostname, port, PiKamClientFactory(self))
     
@@ -465,24 +481,45 @@ class PiKamApp(App):
         self.previewTask.start(refresh) 
         
     def directSnapshot(self, parameters, preview):
+        from threading import Thread
+        # Perform in background - allow GUI to continue responding
+        thread = Thread(target=self.directSnapshotTask, args=(parameters, preview))
+        thread.start()
+            
+        
+    def directSnapshotTask(self, parameters, preview, *args):
         # running on a Raspberry Pi
-        if self.directCamera == None:
-            try:
-                print "Using picam directly"
-                from piKamPicamServer import PiKamPicamServerProtocal
-                self.directCamera = PiKamPicamServerProtocal()
-            except:
-                print "Using raspistill directly"
-                from piKamServer import PiKamServerProtocal
-                self.directCamera = PiKamServerProtocal()
+        #print parameters, preview, args
         try:
+            if self.directCamera == None:
+                try:
+                    print "Using picam directly"
+                    self.usingDirectPicam = True
+                    from piKamPicamServer import PiKamPicamServerProtocal
+                    self.directCamera = PiKamPicamServerProtocal()
+                except:
+                    self.usingDirectPicam = False
+                    print "Using raspistill directly"
+                    from piKamServer import PiKamServerProtocal
+                    self.directCamera = PiKamServerProtocal()
             imageFilename, imageBinary, replyMessageType = self.directCamera.takePhoto(parameters)
+            # Schedule to show image in main event thread
             if preview:
-                self.displayPreview(imageBinary)
+                # raspistill will have already saved the image, just display it.
+                from functools import partial
+                Clock.schedule_once(partial(self.displayPreview, imageBinary))
             else:
-                self.displayImage(imageBinary)   
+                if self.usingDirectPicam:
+                    # Need to write the image out.
+                    with open(imageFilename, 'wb') as imageFile:
+                        imageFile.write(imageBinary)
+                from functools import partial
+                Clock.schedule_once(partial(self.displayImage, imageBinary))
         except:
             self.displayError('Error on attemping direct photo.\nNo remote hostname set, you need to be running this on a Raspberry Pi.')
+        finally:
+            self.waitingForImage = False
+
             
     def disablePreview(self):
         if self.previewTask: 
