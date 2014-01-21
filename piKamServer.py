@@ -33,7 +33,7 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         cmd = Pickler.loads(data)
         # Retreive the command from the dictionary
         if cmd['cmd'] == 'shoot':
-            imageFilename, imageBinary, replyMessageType = self.takePhoto(cmd['args'])
+            imageFilename, imageBinary, imageType, replyMessageType = self._takePhoto(cmd['args'])
             self.transmitPhoto(imageFilename, imageBinary, replyMessageType)
         elif cmd['cmd'] == 'prepareCamera':
             self.prepareCamera(cmd)
@@ -83,7 +83,6 @@ class PiKamServerProtocal(basic.NetstringReceiver):
             args += ('--width', str(request.width))
         if request.height:
             args += ('--height', str(request.height))
-        print args
         replyMessageType = request.replyMessageType
         return args, imageFilename, imageType, replyMessageType
 
@@ -99,16 +98,25 @@ class PiKamServerProtocal(basic.NetstringReceiver):
         self.transport.write(str(len(message)) + ':' + message + ',')
 
     def takePhoto(self, parameters):
+        return self._takePhoto(parameters, returnPyImage=True)
+        
+    def _takePhoto(self, parameters, returnPyImage=False):
         imageBinary = None
         raspistillCmd, imageFilename, imageType, replyMessageType = self.createShootCommand(parameters) 
         output, err, rc = self.osCommand(raspistillCmd if not TEST_IMAGE else [ 'sleep', '2' ])            
         print output
-        print err
+        print err           
         if rc == 0:
+            if returnPyImage:
+                print 'py'
+                import Image as PyImage
+                pyImg = PyImage.open(imageFilename if not TEST_IMAGE else TEST_IMAGE)
+                return imageFilename, pyImg, imageType, replyMessageType
+            print 'npy'
             print imageFilename
             with open(imageFilename if not TEST_IMAGE else TEST_IMAGE, 'rb') as imageFile:
                 imageBinary = imageFile.read()
-        return imageFilename, imageBinary, replyMessageType
+        return imageFilename, imageBinary, imageType, replyMessageType
         
     def prepareCamera(self, cmd):
         """Put the camera in to recording mode."""

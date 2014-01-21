@@ -31,8 +31,8 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         cmd = Pickler.loads(data)
         # Retreive the command from the dictionary
         if cmd['cmd'] == 'shoot':
-            imageFilename, imageBinary, replyMessageType = self.takePhoto(cmd['args'])
-            self.transmitPhoto(imageFilename, imageBinary, replyMessageType)
+            imageFilename, image, imageType, replyMessageType = self.takePhoto(cmd['args'])
+            self.transmitPhoto(imageFilename, image, imageType, replyMessageType)
         elif cmd['cmd'] == 'prepareCamera':
             self.prepareCamera(cmd)
         else:
@@ -49,8 +49,13 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
         pass
 
     
-    def transmitPhoto(self, imageFilename, imageBinary, replyMessageType):
+    def transmitPhoto(self, imageFilename, image, imageType, replyMessageType):
         #print imageFilename, str(len(imageBinary))
+        buffer = StringIO.StringIO()
+        image.save(buffer, imageType)
+        imageBinary = buffer.getvalue()
+        buffer.close()
+        print replyMessageType, imageType, 'imgsz=', str(len(imageBinary))
         if imageBinary:
             data = {'type':replyMessageType, 'name':imageFilename, 'data':imageBinary}
         else:
@@ -109,13 +114,8 @@ class PiKamPicamServerProtocal(PiKamServerProtocal):
             
             image = picam.takePhotoWithDetails(width,height,quality) 
             
-            buffer = StringIO.StringIO()
-            image.save(buffer, imageType)
-            imageBinary = buffer.getvalue()
-            buffer.close()
-            print replyType, imageType, 'imgsz=', str(len(imageBinary))
             #print imageFilename, str(len(imageBinary))
-            return imageFilename, imageBinary, replyType
+            return imageFilename, image, imageType, replyType
         finally:
             self.shooting = False
  

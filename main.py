@@ -26,6 +26,7 @@ from kivy.core.window import Window
 from kivy.graphics import Rectangle
 
 import Image as PyImage
+import ImageDraw as PyImageDraw
 import cPickle
 import os
 import inspect
@@ -132,6 +133,8 @@ SETTINGS_JSON_DATA = """[
 #print SETTINGS_JSON_DATA
 
 def textureFromPyImage(pyImg):
+    # Suspect this has to be called in the OpenGL event loop which
+    # is bound to slow us down.
     raw = pyImg.tostring()
     width, height = pyImg.size
     print width, height
@@ -139,7 +142,20 @@ def textureFromPyImage(pyImg):
     texture = Texture.create_from_data(imdata)
     texture.flip_vertical()
     return texture
+
+def borderPyImage(pyImg):
+    draw = PyImageDraw.Draw(pyImg)
+    draw.rectangle([(20,20), tuple([v - 20 for v in pyImg.size])], outline='green')
+    del draw
+    return pyImg
     
+def downsizePyImage(pyImg):
+    # On some droids (and the Raspberry Pi) kivy cannot load large images - so downsize for display
+    # Convert to "thumbnail" display size in place.
+    # NB downsizes in place,
+    pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
+    return pyImg
+   
 def pyImageFromStr(str):
     return PyImage.open(StringIO.StringIO(str))
 
@@ -220,6 +236,7 @@ class PiKamApp(App):
     screenMgr = None
     directCamera = None
     mark = None
+    mark2 = None
     runningOnPi = False
     usingDirectPicam = False
     
@@ -234,14 +251,35 @@ class PiKamApp(App):
             self.screenMgr.add_widget(screenWidget) 
  
         if self.config.get('Misc', 'splash') != '0' and os.path.exists('piKamSplash.jpg'):
-            with open ('piKamSplash.jpg', "r") as splashFile:
-                data = splashFile.read()
-            self.displayImage(data)
+            self.displayImage(PyImage.open('piKamSplash.jpg'))
         self.reconnect()
         print vars(self)
+        if self.runningOnPi:
+            Window.bind(on_motion=self.plot_click_pos)
+            Clock.schedule_interval(self.plot_motion, .5)
         #Window.rotation = Window.rotation + 90
         Window.on_rotate(self.rotate)
         return self.screenMgr
+        
+    def plot_click_pos(self, x, etype, motionevent):
+       if self.runningOnPi:
+            # Cannot see where mouse is on Raspberry Pi Kivy - provide some
+            # indicator.                 
+            if self.mark2:
+                 self.screenMgr.current_screen.canvas.remove(self.mark2)
+            self.mark2 = Rectangle(pos=motionevent.pos, size=(5, 5))
+            self.screenMgr.current_screen.canvas.add(self.mark2)
+
+    def plot_motion(self, *args):
+        # Cannot see where mouse is on Raspberry Pi Kivy - provide some
+        # indicator. 
+        if self.mark:
+            if self.mark.pos == Window.mouse_pos:
+                return
+            self.screenMgr.current_screen.canvas.remove(self.mark)
+        #print 'mouse at', Window.mouse_pos
+        self.mark = Rectangle(pos=Window.mouse_pos, size=(5, 5))
+        self.screenMgr.current_screen.canvas.add(self.mark)
         
     def rotate(self, screenName=None):
         print "rotate"
@@ -289,7 +327,9 @@ class PiKamApp(App):
         self.displayInfo(message, title)
         
     def displayProgress(self, value):
-        self.currentTop().downloadProgress.value += value
+        # If zero then we don't want progress for this op.
+        if self.currentTop().downloadProgress.value > 0:
+            self.currentTop().downloadProgress.value += value
         
     def displayBusyWaiting(self, dt=None):
         if dt == None:
@@ -300,7 +340,7 @@ class PiKamApp(App):
         # Fake progress updates until the real updates happen
         
         if self.busyWaiting:
-            self.currentTop().downloadProgress.value += 10000
+            self.currentTop().downloadProgress.value += 30000
             return True
         else:
             # If the values differ, then 
@@ -309,17 +349,12 @@ class PiKamApp(App):
     
     def stopBusyWaiting(self):
         self.busyWaiting = False
-    
-         
-    def displayImage(self, data, *args):
-        self.displayBusyWaiting()
+        self.currentTop().downloadProgress.value = 0
+        
+    def displayImage(self, pyImg, *args):
         try:
             useCarousel = self.config.get('Misc', 'carousel') != '0'
-            # On some droids kivy cannot load large images - so downsize for display
-            pyImg = PyImage.open(StringIO.StringIO(data))
-            # Convert to "thumbnail" display size in place.
-            pyImg.thumbnail((1024,1024), PyImage.ANTIALIAS)
-            # Load Kivy Image from PyImage without going to disk
+                # Load Kivy Image from PyImage without going to disk
             image = Image(texture=textureFromPyImage(pyImg))
             if useCarousel:
                 self.currentTop().imageCarousel.add_widget(image)
@@ -334,32 +369,34 @@ class PiKamApp(App):
                 
         finally:
             self.stopBusyWaiting()
+            self.waitingForImage = False
 
-    def displayPreview(self, data, *args):
-        useCarousel = self.config.get('Misc', 'carousel') != '0'
-        if self.previewImage:
-            #print 'update preview'
-            self.previewImage.texture = textureFromPyImage(pyImageFromStr(data))
-            if useCarousel:
-                # Shuffle to end
-                oldIndex = self.currentTop().imageCarousel.index
-                self.currentTop().imageCarousel.remove_widget(self.previewImage)
-                self.currentTop().imageCarousel.add_widget(self.previewImage)
-                if oldIndex == len(self.currentTop().imageCarousel.slides) - 1:
-                    self.currentTop().imageCarousel.index = len(self.currentTop().imageCarousel.slides) - 1
-        else:
-            #print 'initial preview'
-            self.previewImage =  Image(texture=textureFromPyImage(pyImageFromStr(data)),mipmap=True)
-            self.previewImage.nocache = True
-            if useCarousel:
-                oldIndex = self.currentTop().imageCarousel.index
-                self.currentTop().imageCarousel.add_widget(self.previewImage)
-                # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
-                if oldIndex == len(self.currentTop().imageCarousel.slides) - 1:
-                    self.currentTop().imageCarousel.index = len(self.currentTop().imageCarousel.slides) - 1
+    def displayPreview(self, pyImg, *args):
+        try:
+            useCarousel = self.config.get('Misc', 'carousel') != '0'
+            if self.previewImage:
+                self.previewImage.texture = textureFromPyImage(pyImg)
+                if useCarousel:
+                    # Shuffle to end
+                    oldIndex = self.currentTop().imageCarousel.index
+                    self.currentTop().imageCarousel.remove_widget(self.previewImage)
+                    self.currentTop().imageCarousel.add_widget(self.previewImage)
+                    if oldIndex == len(self.currentTop().imageCarousel.slides) - 1:
+                        self.currentTop().imageCarousel.index = len(self.currentTop().imageCarousel.slides) - 1
             else:
-                self.currentTop().imageLayout.clear_widgets()
-                self.currentTop().imageLayout.add_widget(self.previewImage)
+                self.previewImage =  Image(texture=textureFromPyImage(pyImg))
+                self.previewImage.nocache = True
+                if useCarousel:
+                    oldIndex = self.currentTop().imageCarousel.index
+                    self.currentTop().imageCarousel.add_widget(self.previewImage)
+                    # Set the carousel to display the new image (could exhaust memory - perhaps only display last N)
+                    if oldIndex == len(self.currentTop().imageCarousel.slides) - 1:
+                        self.currentTop().imageCarousel.index = len(self.currentTop().imageCarousel.slides) - 1
+                else:
+                    self.currentTop().imageLayout.clear_widgets()
+                    self.currentTop().imageLayout.add_widget(self.previewImage)
+        finally:
+            self.waitingForImage = False
 
 
     def on_connection(self, connection):
@@ -370,20 +407,9 @@ class PiKamApp(App):
         
     def on_start(self):
         if self.runningOnPi:
-            # On a Raspberry Pi - start preview - make mouse pos visible.
-            Clock.schedule_interval(self.plot_motion, .1)
             # On a Raspberry Pi - start preview - if remote it
             # will be started by on_connection
             self.enablePreview()
-
-    def plot_motion(self, *args):
-        # Cannot see where mouse is on Raspberry Pi Kivy - provide some
-        # indicator.                 
-        #self.screenMgr.current_screen.canvas.add(Color(1., 1., 0))
-        if self.mark:
-             self.screenMgr.current_screen.canvas.remove(self.mark)
-        self.mark = Rectangle(pos=Window.mouse_pos, size=(5, 5))
-        self.screenMgr.current_screen.canvas.add(self.mark)
 
     def on_pause(self):
         #reactor._mainLoopShutdown()
@@ -402,27 +428,25 @@ class PiKamApp(App):
             self.displayError('No connection to server')
             
     def processRemoteResponse(self, message):
-        try:
-            self.stopBusyWaiting()
-            # Turn the response string back nto a dictionary and see what it is
-            result = cPickle.loads(message)
-            if result['type'] == 'image':
-                self.displayImage(result['data'])
-                # Save the image and add an internal copy to the GUI carousel.
-                filename = result['name']
-                with open(filename, 'wb') as imageFile:
-                    imageFile.write(result['data'])
-            elif result['type'] == 'preview':
-                self.displayPreview(result['data'])
-            elif result['type'] == 'error':
-                self.displayError(result['message'])
-            else:
-                self.displayError('Unexpected kind of message.')
-            self.currentTop().downloadProgress.value = 0
-        finally:
-            self.waitingForImage = False
+        # Turn the response string back nto a dictionary and see what it is
+        result = cPickle.loads(message)
+        if result['type'] == 'image':
+            # Save the image and add an internal copy to the GUI carousel.
+            filename = result['name']
+            with open(filename, 'wb') as imageFile:
+                imageFile.write(result['data'])
+            self.displayImage(downsizePyImage(pyImageFromStr(result['data'])))
+        elif result['type'] == 'preview':
+            self.displayPreview(borderPyImage(pyImageFromStr(result['data'])))
+        elif result['type'] == 'error':
+            self.displayError(result['message'])
+        else:
+            self.displayError('Unexpected kind of message.')
 
     def takeSnapshot(self, preview = False):
+        if self.waitingForImage and preview:
+            print 'already waiting', self.waitingForImage
+            return
         self.waitingForImage = True
         self.model.setConfig(self.config)
         command = {}
@@ -461,9 +485,6 @@ class PiKamApp(App):
     
     def requestPreview(self):
         #print 'pv'
-        if self.waitingForImage:
-            print 'already waiting'
-            return
         useCarousel = self.config.get('Misc', 'carousel') != '0'
         numSlides = len(self.currentTop().imageCarousel.slides)
         if useCarousel and numSlides != 0 and self.currentTop().imageCarousel.index != numSlides - 1:
@@ -481,11 +502,12 @@ class PiKamApp(App):
         self.previewTask.start(refresh) 
         
     def directSnapshot(self, parameters, preview):
+        if not preview:
+            self.displayBusyWaiting()
         from threading import Thread
         # Perform in background - allow GUI to continue responding
         thread = Thread(target=self.directSnapshotTask, args=(parameters, preview))
         thread.start()
-            
         
     def directSnapshotTask(self, parameters, preview, *args):
         # running on a Raspberry Pi
@@ -502,25 +524,23 @@ class PiKamApp(App):
                     print "Using raspistill directly"
                     from piKamServer import PiKamServerProtocal
                     self.directCamera = PiKamServerProtocal()
-            imageFilename, imageBinary, replyMessageType = self.directCamera.takePhoto(parameters)
+            imageFilename, image, imageType, replyMessageType = self.directCamera.takePhoto(parameters)
             # Schedule to show image in main event thread
+            # Do slow as much image manipulation as possible in this thread to prevent the GUI blocking
             if preview:
                 # raspistill will have already saved the image, just display it.
                 from functools import partial
-                Clock.schedule_once(partial(self.displayPreview, imageBinary))
+                #self.displayPreview(textureFromPyImage(borderPyImage(image)))
+                Clock.schedule_once(partial(self.displayPreview, borderPyImage(image)))
             else:
                 if self.usingDirectPicam:
                     # Need to write the image out.
-                    with open(imageFilename, 'wb') as imageFile:
-                        imageFile.write(imageBinary)
+                    image.save(imageFilename, imageType)
                 from functools import partial
-                Clock.schedule_once(partial(self.displayImage, imageBinary))
-        except:
-            # catching everthing - bad - need to fix
-            self.displayError('Error on attemping direct photo.\nNo remote hostname set, you need to be running this on a Raspberry Pi.')
-        finally:
-            self.waitingForImage = False
-
+                Clock.schedule_once(partial(self.displayImage, downsizePyImage(image)))
+        except Exception, error:
+            print str(error)
+            self.displayError('No remote hostname set, you need to be running this on a Raspberry Pi. ' + str(error) )
             
     def disablePreview(self):
         if self.previewTask: 
