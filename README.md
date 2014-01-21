@@ -131,8 +131,11 @@ monitor with touch-screen support for it to be of much use:
   doing almost anything quite difficult - a touch screen would
   work around this issue because the pointer location would always
   be under your finger.   As a temporary measure I've added code 
-  that tracks the mouse and draws a small white square at its position.
-* From what I gather the keyboard may also have issues.
+  that plots the mouse location where it was last clicked.
+* From what I gather the keyboard may also have issues. It's
+  better to run the GUI app in a console because terminating
+  it via Control-C is more reliable in a console environment.
+* Control-C is the only way to terminate the App.
 
 If you have Kivy installed:
 
