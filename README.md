@@ -131,9 +131,7 @@ monitor with touch-screen support for it to be of much use:
   doing almost anything quite difficult - a touch screen would
   work around this issue because the pointer location would always
   be under your finger.   As a temporary measure I've added code 
-  that draws a small white square under the mouse location while the mouse is clicked (kivy
-  does not seem to have a mouse motion event that I can use to continuously
-  plot the location of an unclicked mouse).
+  that tracks the mouse and draws a small white square at its position.
 * From what I gather the keyboard may also have issues.
 
 If you have Kivy installed:
