@@ -132,10 +132,19 @@ monitor with touch-screen support for it to be of much use:
   work around this issue because the pointer location would always
   be under your finger.   As a temporary measure I've added code 
   that plots the mouse location where it was last clicked.
-* From what I gather the keyboard may also have issues. It's
-  better to run the GUI app in a console because terminating
+* It's better to run the GUI app in a console because terminating
   it via Control-C is more reliable in a console environment.
-* Control-C is the only way to terminate the App.
+* The keyboard doesn't seem to work inside Kivy, if you need to
+  edit any settings stored in pikam.ini it can be manually edited.
+* Python, the Python Image Library, and Kivy together are rather
+  draining on the Raspberry Pi. Preview refresh rates of less 
+  than 3 seconds are likely to reduce the interactivity of the
+  GUI.  
+* The GUI may be more responsive if it's configured
+  to talk to a localhost piKamPicamServer running in a separate process -
+  this reduces the load on the interpreter running the GUI
+  and avoids any slowdowns due to the python global-interpreter-lock (edit
+  the pikam.ini file and set the hostname).
 
 If you have Kivy installed:
 
