@@ -241,7 +241,7 @@ class PiKamApp(App):
     usingDirectPicam = False
     
     def build(self):
-        self.runningOnPi = str.strip(self.config.get('Server', 'hostname')) == ''
+        self.runningOnPi = self.config.get('Server', 'hostname').strip() == ''
         self.screenMgr = ScreenManager()
         horzScreen = PiKamHorizontalScreen(name='horz')
         vertScreen = PiKamVerticalScreen(name='vert')    
