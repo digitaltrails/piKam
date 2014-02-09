@@ -2,6 +2,9 @@
 
 ## Recent changes
 
+#### 2014/02/06
+* Fix crash at startup due to UFT-8/string incompatibility for Kivy 1.8 (Android Kivy Launcher).
+
 #### 2014/01/20
 * The user interface app can now be run on the Raspberry Pi without running the server (limited by Kivy bugs - see Issues).
 * The app now has horizontal and vertical layouts (configuration switch). 
